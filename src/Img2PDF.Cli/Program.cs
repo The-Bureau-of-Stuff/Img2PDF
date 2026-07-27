@@ -1,3 +1,5 @@
+using Img2PDF.Core.Imaging;
+using Img2PDF.Core.Layout;
 using Img2PDF.Core.Pdf;
 
 string? listPath = null;
@@ -43,7 +45,15 @@ if (imagePaths.Length == 0)
 
 Console.WriteLine($"Composing {imagePaths.Length} page(s) -> {outputPath}");
 
-await PdfComposer.ComposeAsync(imagePaths, outputPath);
+var pageSources = new List<PdfPageSource>();
+foreach (string imagePath in imagePaths)
+{
+    ImageInfo info = await ImageInspector.InspectAsync(imagePath);
+    int rotation = PageLayout.NormalizeExifRotation(info.ExifOrientation);
+    pageSources.Add(new PdfPageSource(imagePath, rotation));
+}
+
+await PdfComposer.ComposeAsync(pageSources, outputPath, new PdfOptions());
 
 long inputBytes = imagePaths.Sum(p => new FileInfo(p).Length);
 long outputBytes = new FileInfo(outputPath).Length;

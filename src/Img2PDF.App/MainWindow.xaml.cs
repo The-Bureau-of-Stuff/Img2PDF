@@ -1,10 +1,16 @@
+using System.Diagnostics;
 using System.Runtime.InteropServices.WindowsRuntime;
+using Img2PDF.App.State;
 using Img2PDF.App.ViewModels;
 using Img2PDF.Core.Imaging;
+using Img2PDF.Core.Pdf;
 using Microsoft.UI.Input;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media.Imaging;
+using Windows.Storage;
+using Windows.Storage.Pickers;
 using Windows.Storage.Streams;
 using Windows.System;
 using Windows.UI.Core;
@@ -14,6 +20,9 @@ namespace Img2PDF.App;
 public sealed partial class MainWindow : Window
 {
     public MainViewModel ViewModel { get; }
+
+    private CancellationTokenSource? _saveCts;
+    private string? _lastSavedPath;
 
     public MainWindow(string? folderPath)
     {
@@ -25,6 +34,21 @@ public sealed partial class MainWindow : Window
         if (!string.IsNullOrWhiteSpace(folderPath))
         {
             _ = ViewModel.LoadFolderAsync(folderPath);
+        }
+
+        // handledEventsToo: true — GridViewItem marks Enter as handled internally for its own
+        // selection-toggle behavior before a normal bubbled KeyDown subscription would ever see it
+        // (a KeyboardAccelerator on the Save button didn't intercept it either). This is the only
+        // reliable way to still receive Enter as a window-wide "Save" shortcut (spec §4.2) regardless
+        // of what has focus.
+        RootGrid.AddHandler(UIElement.KeyDownEvent, new KeyEventHandler(RootGrid_KeyDown), handledEventsToo: true);
+    }
+
+    private void RootGrid_KeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (e.Key == VirtualKey.Enter)
+        {
+            _ = SaveAsync();
         }
     }
 
@@ -74,6 +98,7 @@ public sealed partial class MainWindow : Window
             await bitmap.SetSourceAsync(stream);
 
             PreviewImage.Source = bitmap;
+            PreviewImageRotation.Angle = item.RotationDegrees;
             PreviewOverlay.Visibility = Visibility.Visible;
         }
         catch (Exception)
@@ -88,6 +113,135 @@ public sealed partial class MainWindow : Window
     {
         PreviewOverlay.Visibility = Visibility.Collapsed;
         PreviewImage.Source = null;
+    }
+
+    // ComboBox's SelectedIndex="0" in XAML fires SelectionChanged synchronously during
+    // InitializeComponent() — before the constructor below has assigned ViewModel — so these
+    // guard against a null ViewModel rather than relying on ordering. (A NullReferenceException
+    // thrown from inside that synchronous callback doesn't surface as a normal managed exception;
+    // it escapes through the WinRT/XAML boundary as an unhandled native crash, 0xc000027b.)
+    private void PageSizeCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (ViewModel is not null)
+        {
+            ViewModel.PageSize = (PageSizeOption)PageSizeCombo.SelectedIndex;
+        }
+    }
+
+    private void MarginsCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (ViewModel is not null)
+        {
+            ViewModel.Margins = (MarginsOption)MarginsCombo.SelectedIndex;
+        }
+    }
+
+    private void OrientationCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (ViewModel is not null)
+        {
+            ViewModel.Orientation = (OrientationOption)OrientationCombo.SelectedIndex;
+        }
+    }
+
+    private void QualityCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (ViewModel is not null)
+        {
+            ViewModel.Quality = (QualityOption)QualityCombo.SelectedIndex;
+        }
+    }
+
+    private async void SaveButton_Click(object sender, RoutedEventArgs e) => await SaveAsync();
+
+    private void CancelSaveButton_Click(object sender, RoutedEventArgs e) => _saveCts?.Cancel();
+
+    private async Task SaveAsync()
+    {
+        if (ViewModel.Pages.Count == 0 || _saveCts is not null)
+        {
+            return;
+        }
+
+        var picker = new FileSavePicker
+        {
+            // FileSavePicker has no supported way to start at an arbitrary folder path (only the
+            // PickerLocationId enum) — Pictures library is the closest reasonable default for
+            // this app's typical source folders. The suggested filename below is still exact.
+            SuggestedStartLocation = PickerLocationId.PicturesLibrary,
+        };
+        picker.FileTypeChoices.Add("PDF Document", new List<string> { ".pdf" });
+
+        string desiredName = SaveFileNaming.ComputeDefaultFileName(ViewModel.FolderPath);
+        string resolvedName = ViewModel.FolderPath is not null
+            ? SaveFileNaming.ResolveCollision(ViewModel.FolderPath, desiredName)
+            : desiredName;
+        // SuggestedFileName excludes the extension — the picker appends it from FileTypeChoices.
+        picker.SuggestedFileName = Path.GetFileNameWithoutExtension(resolvedName);
+
+        WinRT.Interop.InitializeWithWindow.Initialize(picker, WinRT.Interop.WindowNative.GetWindowHandle(this));
+
+        StorageFile? file = await picker.PickSaveFileAsync();
+        if (file is null)
+        {
+            return;
+        }
+
+        bool showProgress = ViewModel.Pages.Count > 10;
+        SaveProgressPanel.Visibility = showProgress ? Visibility.Visible : Visibility.Collapsed;
+        SaveProgressBar.Maximum = ViewModel.Pages.Count;
+        SaveProgressBar.Value = 0;
+
+        _saveCts = new CancellationTokenSource();
+        var progress = new Progress<int>(count => DispatcherQueue.TryEnqueue(() => SaveProgressBar.Value = count));
+
+        try
+        {
+            await Task.Run(() => ViewModel.SaveAsync(file.Path, _saveCts.Token, progress));
+            _lastSavedPath = file.Path;
+            SaveSuccessInfoBar.Message = file.Name;
+            SaveSuccessInfoBar.IsOpen = true;
+        }
+        catch (OperationCanceledException)
+        {
+            // PdfDocument.Save happens once at the end, so PdfComposer itself never wrote a partial
+            // file — but FileSavePicker.PickSaveFileAsync creates an empty placeholder at the chosen
+            // path the moment the user picks a location, before we write anything. Clean that up.
+            try
+            {
+                File.Delete(file.Path);
+            }
+            catch (IOException)
+            {
+                // Best-effort — an empty leftover stub is untidy but harmless.
+            }
+        }
+        catch (Exception ex)
+        {
+            ViewModel.ErrorMessage = ex.Message;
+        }
+        finally
+        {
+            SaveProgressPanel.Visibility = Visibility.Collapsed;
+            _saveCts.Dispose();
+            _saveCts = null;
+        }
+    }
+
+    private void OpenSavedFile_Click(object sender, RoutedEventArgs e)
+    {
+        if (_lastSavedPath is not null)
+        {
+            Process.Start(new ProcessStartInfo(_lastSavedPath) { UseShellExecute = true });
+        }
+    }
+
+    private void ShowSavedFileInFolder_Click(object sender, RoutedEventArgs e)
+    {
+        if (_lastSavedPath is not null)
+        {
+            Process.Start("explorer.exe", $"/select,\"{_lastSavedPath}\"");
+        }
     }
 
     private void PagesGridView_KeyDown(object sender, KeyRoutedEventArgs e)

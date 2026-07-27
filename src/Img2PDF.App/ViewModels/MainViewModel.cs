@@ -4,6 +4,7 @@ using System.Runtime.InteropServices.WindowsRuntime;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Img2PDF.App.State;
 using Img2PDF.Core.Imaging;
+using Img2PDF.Core.Pdf;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.Storage.Streams;
@@ -42,8 +43,30 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private string? _errorMessage;
 
+    // Save options (spec §4.2) — defaults produce a clean, correctly-oriented A4 document with
+    // zero interaction. Bound from MainWindow's options expander.
+    [ObservableProperty]
+    private PageSizeOption _pageSize = PageSizeOption.A4;
+
+    [ObservableProperty]
+    private MarginsOption _margins = MarginsOption.None;
+
+    [ObservableProperty]
+    private OrientationOption _orientation = OrientationOption.Auto;
+
+    [ObservableProperty]
+    private QualityOption _quality = QualityOption.Original;
+
+    [ObservableProperty]
+    private bool _greyscale;
+
+    public string? FolderPath { get; private set; }
+
+    public PdfOptions CurrentOptions => new(PageSize, Margins, Orientation, Quality, Greyscale);
+
     public async Task LoadFolderAsync(string folderPath)
     {
+        FolderPath = folderPath;
         IsLoading = true;
         ErrorMessage = null;
         try
@@ -199,6 +222,12 @@ public partial class MainViewModel : ObservableObject
         {
             action?.Invoke();
         }
+    }
+
+    public Task SaveAsync(string outputPath, CancellationToken cancellationToken, IProgress<int>? progress = null)
+    {
+        var pageSources = Pages.Select(p => new PdfPageSource(p.SourcePath, p.RotationDegrees)).ToList();
+        return PdfComposer.ComposeAsync(pageSources, outputPath, CurrentOptions, progress, cancellationToken);
     }
 
     private void OnPagesCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)

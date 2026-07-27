@@ -7,15 +7,31 @@ namespace Img2PDF.Core.Pdf;
 
 public static class PdfComposer
 {
-    /// <summary>
-    /// Builds a PDF from the given images, in order, one page per image: A4, auto orientation,
-    /// fit-and-centre (never crop), EXIF-corrected rotation, JPEG passthrough (no re-encode).
-    /// </summary>
-    public static async Task ComposeAsync(IReadOnlyList<string> imagePaths, string outputPath)
+    private static readonly string[] JpegExtensions = { ".jpg", ".jpeg" };
+
+    // DPI target for each resampled quality tier — Original is passthrough-only, handled separately.
+    private static readonly Dictionary<QualityOption, double> QualityDpi = new()
     {
-        if (imagePaths.Count == 0)
+        [QualityOption.High] = 300.0,
+        [QualityOption.Medium] = 200.0,
+        [QualityOption.Small] = 150.0,
+    };
+
+    /// <summary>
+    /// Builds a PDF from the given pages, in order, one page per image: page size/margins/
+    /// orientation/quality/greyscale per <paramref name="options"/>, fit-and-centre (never crop).
+    /// JPEG passthrough (no re-encode) applies only at Original quality with greyscale off.
+    /// </summary>
+    public static async Task ComposeAsync(
+        IReadOnlyList<PdfPageSource> pages,
+        string outputPath,
+        PdfOptions options,
+        IProgress<int>? progress = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (pages.Count == 0)
         {
-            throw new ArgumentException("At least one image path is required.", nameof(imagePaths));
+            throw new ArgumentException("At least one page is required.", nameof(pages));
         }
 
         using var document = new PdfDocument();
@@ -26,21 +42,57 @@ public static class PdfComposer
         // raw PDF dictionary entry instead.
         document.Info.Elements.SetString("/Producer", "Img2PDF");
 
-        foreach (string imagePath in imagePaths)
+        for (int i = 0; i < pages.Count; i++)
         {
-            ImageInfo info = await ImageInspector.InspectAsync(imagePath);
-            PageLayoutResult layout = PageLayout.Compute(info.PixelWidth, info.PixelHeight, info.ExifOrientation);
+            cancellationToken.ThrowIfCancellationRequested();
+
+            PdfPageSource source = pages[i];
+            ImageInfo info = await ImageInspector.InspectAsync(source.ImagePath);
+            PageLayoutResult layout = PageLayout.Compute(info.PixelWidth, info.PixelHeight, source.RotationDegrees, options);
 
             PdfPage page = document.AddPage();
             page.Width = XUnit.FromPoint(layout.PageWidthPt);
             page.Height = XUnit.FromPoint(layout.PageHeightPt);
 
             using XGraphics gfx = XGraphics.FromPdfPage(page);
-            using XImage image = XImage.FromFile(imagePath);
-            DrawRotated(gfx, image, layout);
+
+            bool passthrough = options.Quality == QualityOption.Original
+                && !options.Greyscale
+                && JpegExtensions.Contains(Path.GetExtension(source.ImagePath), StringComparer.OrdinalIgnoreCase);
+
+            if (passthrough)
+            {
+                using XImage image = XImage.FromFile(source.ImagePath);
+                DrawRotated(gfx, image, layout);
+            }
+            else
+            {
+                byte[] jpegBytes = await RenderForEmbedAsync(source.ImagePath, layout, options);
+                using var imageStream = new MemoryStream(jpegBytes);
+                using XImage image = XImage.FromStream(imageStream);
+                DrawRotated(gfx, image, layout);
+            }
+
+            progress?.Report(i + 1);
         }
 
         document.Save(outputPath);
+    }
+
+    // Renders the embedded copy at the quality tier's target DPI. The target pixel dimensions are
+    // computed in *source* (pre-rotation) orientation — DrawRotated rotates via a graphics
+    // transform at draw time, so the source pixels are never rotated, only resampled.
+    private static Task<byte[]> RenderForEmbedAsync(string imagePath, PageLayoutResult layout, PdfOptions options)
+    {
+        double dpi = QualityDpi.GetValueOrDefault(options.Quality, QualityDpi[QualityOption.High]);
+        bool swapped = layout.RotationDegrees is 90 or 270;
+        double sourceWidthPt = swapped ? layout.ImageHeightPt : layout.ImageWidthPt;
+        double sourceHeightPt = swapped ? layout.ImageWidthPt : layout.ImageHeightPt;
+
+        uint targetWidth = (uint)Math.Max(1, Math.Round(sourceWidthPt / 72.0 * dpi));
+        uint targetHeight = (uint)Math.Max(1, Math.Round(sourceHeightPt / 72.0 * dpi));
+
+        return ImageRenderer.RenderForEmbedAsync(imagePath, targetWidth, targetHeight, options.Greyscale);
     }
 
     /// <summary>

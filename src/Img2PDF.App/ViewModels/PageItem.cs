@@ -53,7 +53,7 @@ public partial class PageItem : ObservableObject
         PixelWidth = info.PixelWidth;
         PixelHeight = info.PixelHeight;
         ExifOrientation = info.ExifOrientation;
-        RotationDegrees = PageLayout.Compute(info.PixelWidth, info.PixelHeight, info.ExifOrientation).RotationDegrees;
+        RotationDegrees = PageLayout.NormalizeExifRotation(info.ExifOrientation);
     }
 
     public void RotateClockwise() => RotationDegrees = (RotationDegrees + 90) % 360;

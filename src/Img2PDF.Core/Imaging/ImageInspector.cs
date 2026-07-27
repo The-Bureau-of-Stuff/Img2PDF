@@ -79,9 +79,13 @@ public static class ImageInspector
             InterpolationMode = BitmapInterpolationMode.Fant,
         };
 
+        // IgnoreExifOrientation, not Respect: the caller (PageItem/MainWindow) applies rotation
+        // itself via RotationDegrees (EXIF baseline + any user adjustment) through a RenderTransform,
+        // the same single source of truth used for the saved PDF. Respecting EXIF here as well would
+        // bake the correction into the pixels AND re-apply it via the transform — a double rotation.
         SoftwareBitmap softwareBitmap = await decoder.GetSoftwareBitmapAsync(
             BitmapPixelFormat.Bgra8, BitmapAlphaMode.Premultiplied, transform,
-            ExifOrientationMode.RespectExifOrientation, ColorManagementMode.DoNotColorManage);
+            ExifOrientationMode.IgnoreExifOrientation, ColorManagementMode.DoNotColorManage);
 
         using var memoryStream = new InMemoryRandomAccessStream();
         BitmapEncoder encoder = await BitmapEncoder.CreateAsync(BitmapEncoder.PngEncoderId, memoryStream);

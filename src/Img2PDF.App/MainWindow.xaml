@@ -13,12 +13,31 @@
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
 
-            <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="12" Padding="12,8">
+            <InfoBar
+                x:Name="SaveSuccessInfoBar"
+                Grid.Row="0"
+                Severity="Success"
+                Title="Saved"
+                IsOpen="False"
+                IsClosable="True">
+                <InfoBar.Content>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button Content="Open" Click="OpenSavedFile_Click"/>
+                        <Button Content="Show in folder" Click="ShowSavedFileInFolder_Click"/>
+                    </StackPanel>
+                </InfoBar.Content>
+            </InfoBar>
+
+            <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="12" Padding="12,8">
                 <TextBlock Text="Zoom" VerticalAlignment="Center"/>
                 <Slider x:Name="ZoomSlider" Minimum="120" Maximum="400" Value="200" Width="200"/>
+                <Button Content="Save" Click="SaveButton_Click"/>
                 <!-- Classic {Binding}, not x:Bind: x:Bind + Converter fails to compile when the
                      code-behind root is a Window (not FrameworkElement) — WinUI-desktop limitation. -->
                 <TextBlock Foreground="Red" VerticalAlignment="Center"
@@ -26,9 +45,60 @@
                            Visibility="{Binding ErrorMessage, Converter={StaticResource BoolToVisibility}}"/>
             </StackPanel>
 
+            <Expander Grid.Row="2" Header="Options" IsExpanded="False" Margin="12,0,12,8" HorizontalContentAlignment="Stretch">
+                <StackPanel Orientation="Horizontal" Spacing="16" Padding="8">
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="Page size"/>
+                        <ComboBox x:Name="PageSizeCombo" SelectedIndex="0" SelectionChanged="PageSizeCombo_SelectionChanged">
+                            <ComboBoxItem Content="A4"/>
+                            <ComboBoxItem Content="Letter"/>
+                            <ComboBoxItem Content="Match image"/>
+                        </ComboBox>
+                    </StackPanel>
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="Margins"/>
+                        <ComboBox x:Name="MarginsCombo" SelectedIndex="0" SelectionChanged="MarginsCombo_SelectionChanged">
+                            <ComboBoxItem Content="None"/>
+                            <ComboBoxItem Content="Narrow (5 mm)"/>
+                            <ComboBoxItem Content="Standard (10 mm)"/>
+                        </ComboBox>
+                    </StackPanel>
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="Orientation"/>
+                        <ComboBox x:Name="OrientationCombo" SelectedIndex="0" SelectionChanged="OrientationCombo_SelectionChanged">
+                            <ComboBoxItem Content="Auto per page"/>
+                            <ComboBoxItem Content="Force portrait"/>
+                        </ComboBox>
+                    </StackPanel>
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="Quality"/>
+                        <ComboBox x:Name="QualityCombo" SelectedIndex="0" SelectionChanged="QualityCombo_SelectionChanged">
+                            <ComboBoxItem Content="Original"/>
+                            <ComboBoxItem Content="High (300 DPI)"/>
+                            <ComboBoxItem Content="Medium (200 DPI)"/>
+                            <ComboBoxItem Content="Small (150 DPI)"/>
+                        </ComboBox>
+                    </StackPanel>
+                    <StackPanel Spacing="4" VerticalAlignment="Bottom">
+                        <CheckBox Content="Greyscale" IsChecked="{Binding Greyscale, Mode=TwoWay}"/>
+                    </StackPanel>
+                </StackPanel>
+            </Expander>
+
+            <StackPanel
+                x:Name="SaveProgressPanel"
+                Grid.Row="3"
+                Orientation="Horizontal"
+                Spacing="12"
+                Padding="12,0,12,8"
+                Visibility="Collapsed">
+                <ProgressBar x:Name="SaveProgressBar" Width="300" Minimum="0"/>
+                <Button x:Name="CancelSaveButton" Content="Cancel" Click="CancelSaveButton_Click"/>
+            </StackPanel>
+
             <GridView
                 x:Name="PagesGridView"
-                Grid.Row="1"
+                Grid.Row="4"
                 ItemsSource="{x:Bind ViewModel.Pages}"
                 CanReorderItems="True"
                 AllowDrop="True"
@@ -169,7 +239,11 @@
             Background="#CC000000"
             Visibility="Collapsed"
             Tapped="PreviewOverlay_Tapped">
-            <Image x:Name="PreviewImage" Stretch="Uniform" Margin="40"/>
+            <Image x:Name="PreviewImage" Stretch="Uniform" Margin="40" RenderTransformOrigin="0.5,0.5">
+                <Image.RenderTransform>
+                    <RotateTransform x:Name="PreviewImageRotation"/>
+                </Image.RenderTransform>
+            </Image>
         </Grid>
     </Grid>
 </Window>
