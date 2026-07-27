@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices.WindowsRuntime;
 using Windows.Graphics.Imaging;
 using Windows.Storage;
 using Windows.Storage.Streams;
@@ -27,5 +28,74 @@ public static class ImageInspector
         }
 
         return new ImageInfo((int)decoder.PixelWidth, (int)decoder.PixelHeight, orientation);
+    }
+
+    /// <summary>
+    /// Returns encoded thumbnail bytes for <paramref name="path"/>, suitable for
+    /// <c>BitmapImage.SetSourceAsync</c>. Prefers the image's embedded thumbnail (fast — no full
+    /// decode) when it's at least <paramref name="requestedLongEdge"/> on its long edge; falls back
+    /// to a scaled-down decode + re-encode otherwise (embedded EXIF/scanner thumbnails are commonly
+    /// only 160x120, too small for the spec's "≥180px on the long edge" legibility requirement).
+    /// </summary>
+    public static async Task<byte[]> GetThumbnailAsync(string path, uint requestedLongEdge = 320)
+    {
+        StorageFile file = await StorageFile.GetFileFromPathAsync(path);
+        using IRandomAccessStream stream = await file.OpenAsync(FileAccessMode.Read);
+        BitmapDecoder decoder = await BitmapDecoder.CreateAsync(stream);
+
+        try
+        {
+            using IRandomAccessStreamWithContentType thumbnail = await decoder.GetThumbnailAsync();
+            if (thumbnail.Size > 0)
+            {
+                byte[] bytes = await ReadAllBytesAsync(thumbnail);
+
+                thumbnail.Seek(0);
+                BitmapDecoder thumbnailDecoder = await BitmapDecoder.CreateAsync(thumbnail);
+                if (Math.Max(thumbnailDecoder.PixelWidth, thumbnailDecoder.PixelHeight) >= requestedLongEdge)
+                {
+                    return bytes;
+                }
+            }
+        }
+        catch (Exception)
+        {
+            // No embedded thumbnail (or the container doesn't support one) — fall through to a
+            // scaled decode below.
+        }
+
+        return await DecodeScaledAsync(decoder, requestedLongEdge);
+    }
+
+    private static async Task<byte[]> DecodeScaledAsync(BitmapDecoder decoder, uint requestedLongEdge)
+    {
+        double scale = requestedLongEdge / (double)Math.Max(decoder.PixelWidth, decoder.PixelHeight);
+        scale = Math.Min(scale, 1.0);
+
+        var transform = new BitmapTransform
+        {
+            ScaledWidth = (uint)Math.Max(1, Math.Round(decoder.PixelWidth * scale)),
+            ScaledHeight = (uint)Math.Max(1, Math.Round(decoder.PixelHeight * scale)),
+            InterpolationMode = BitmapInterpolationMode.Fant,
+        };
+
+        SoftwareBitmap softwareBitmap = await decoder.GetSoftwareBitmapAsync(
+            BitmapPixelFormat.Bgra8, BitmapAlphaMode.Premultiplied, transform,
+            ExifOrientationMode.RespectExifOrientation, ColorManagementMode.DoNotColorManage);
+
+        using var memoryStream = new InMemoryRandomAccessStream();
+        BitmapEncoder encoder = await BitmapEncoder.CreateAsync(BitmapEncoder.PngEncoderId, memoryStream);
+        encoder.SetSoftwareBitmap(softwareBitmap);
+        await encoder.FlushAsync();
+
+        return await ReadAllBytesAsync(memoryStream);
+    }
+
+    private static async Task<byte[]> ReadAllBytesAsync(IRandomAccessStream stream)
+    {
+        stream.Seek(0);
+        var buffer = new byte[stream.Size];
+        await stream.ReadAsync(buffer.AsBuffer(), (uint)buffer.Length, InputStreamOptions.None);
+        return buffer;
     }
 }
