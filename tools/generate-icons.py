@@ -104,7 +104,11 @@ TARGET_SIZES = (16, 24, 32, 48, 256)
 
 
 def scaled(base, factor):
-    return max(1, round(base * factor))
+    # Windows' published per-scale asset sizes round half up (e.g. 71x71 at scale-150
+    # is documented as 107, not 106) — Python's round() is banker's rounding
+    # (round-half-to-even) and lands one pixel short exactly at the .5 cases this hits
+    # (71*1.5=106.5, 50*1.25=62.5), which MSBuild's APPX1619 validation then rejects.
+    return max(1, math.floor(base * factor + 0.5))
 
 
 def main():
