@@ -8,6 +8,7 @@ using Microsoft.UI.Input;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.Storage;
 using Windows.Storage.Pickers;
@@ -130,10 +131,32 @@ public sealed partial class MainWindow : Window
 
     private async void Tile_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
     {
+        // DoubleTapped is routed and bubbles from the chrome buttons up through this tile's
+        // root Grid — a Button's Click handler doesn't mark it handled, so two quick clicks
+        // on Preview/Rotate/Remove also opened the preview underneath. Ignore double-taps
+        // that originated inside a button rather than on the tile/image itself.
+        if (e.OriginalSource is DependencyObject originalSource && HasButtonAncestor(originalSource))
+        {
+            return;
+        }
+
         if (((FrameworkElement)sender).Tag is PageItem item)
         {
             await ShowPreviewAsync(item);
         }
+    }
+
+    private static bool HasButtonAncestor(DependencyObject element)
+    {
+        for (DependencyObject? current = element; current is not null; current = VisualTreeHelper.GetParent(current))
+        {
+            if (current is Button)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private async void PreviewButton_Click(object sender, RoutedEventArgs e)
