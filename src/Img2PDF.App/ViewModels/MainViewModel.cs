@@ -49,6 +49,15 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private string? _errorMessage;
 
+    // Files the shell extension's selection included but excluded as unsupported (or a folder) —
+    // GetState now shows the menu on a mixed selection instead of hiding it entirely (spec §4.1),
+    // so these are surfaced here rather than silently dropped.
+    [ObservableProperty]
+    private bool _hasSkippedFiles;
+
+    [ObservableProperty]
+    private string? _skippedFilesMessage;
+
     // Save options (spec §4.2) — defaults produce a clean, correctly-oriented A4 document with
     // zero interaction. Bound from MainWindow's options expander.
     [ObservableProperty]
@@ -70,20 +79,40 @@ public partial class MainViewModel : ObservableObject
 
     public PdfOptions CurrentOptions => new(PageSize, Margins, Orientation, Quality, Greyscale);
 
-    public async Task LoadFolderAsync(string folderPath)
+    public Task LoadFolderAsync(string folderPath)
     {
         FolderPath = folderPath;
+        IEnumerable<string> paths = Directory.EnumerateFiles(folderPath)
+            .Where(p => SupportedExtensions.Contains(Path.GetExtension(p), StringComparer.OrdinalIgnoreCase));
+        return LoadPagesAsync(paths);
+    }
+
+    // Explicit file list from the shell extension's temp-file handshake (spec §4.1). filePaths is
+    // already all-supported-type by construction; skippedNames are the rest of the original
+    // selection (unsupported files, or a directly-selected folder) that GetState now lets through
+    // rather than hiding the whole menu entry for.
+    public Task LoadFilesAsync(IReadOnlyList<string> filePaths, IReadOnlyList<string> skippedNames)
+    {
+        FolderPath = filePaths.Count > 0 ? Path.GetDirectoryName(filePaths[0]) : null;
+
+        HasSkippedFiles = skippedNames.Count > 0;
+        SkippedFilesMessage = HasSkippedFiles
+            ? $"{skippedNames.Count} item(s) skipped: {string.Join(", ", skippedNames)}"
+            : null;
+
+        return LoadPagesAsync(filePaths);
+    }
+
+    private async Task LoadPagesAsync(IEnumerable<string> paths)
+    {
         IsLoading = true;
         ErrorMessage = null;
         try
         {
-            List<string> paths = Directory.EnumerateFiles(folderPath)
-                .Where(p => SupportedExtensions.Contains(Path.GetExtension(p), StringComparer.OrdinalIgnoreCase))
-                .OrderBy(p => p, NaturalSortComparer.Instance)
-                .ToList();
+            List<string> ordered = paths.OrderBy(p => p, NaturalSortComparer.Instance).ToList();
 
             _suppressCollectionTracking = true;
-            foreach (string path in paths)
+            foreach (string path in ordered)
             {
                 Pages.Add(new PageItem(path));
             }

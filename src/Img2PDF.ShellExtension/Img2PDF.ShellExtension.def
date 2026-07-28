@@ -1,0 +1,9 @@
+; Declares the module's exports — the classic regsvr32/COM in-proc server contract.
+
+LIBRARY
+
+EXPORTS
+  DllGetClassObject   PRIVATE
+  DllCanUnloadNow     PRIVATE
+  DllRegisterServer   PRIVATE
+  DllUnregisterServer PRIVATE

@@ -1,3 +1,4 @@
+using System.Text;
 using Microsoft.UI.Xaml;
 
 namespace Img2PDF.App;
@@ -14,12 +15,48 @@ public partial class App : Application
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
         // Unpackaged app — command-line args come through Environment, not LaunchActivatedEventArgs.
-        // args[0] is the exe path; M2's launch contract is a single folder-path argument (spec §6 —
-        // the `--list` file handshake used by the eventual shell extension is M4 scope, not this).
+        // args[0] is the exe path. The shell extension's real launch contract is
+        // `--list <path> [--skipped <path>]` (spec §4.1); the bare single-folder-path form is kept
+        // as a manual dev-test shortcut (see build_environment memory), not something the shell
+        // extension itself ever sends.
         string[] cmdArgs = Environment.GetCommandLineArgs();
-        string? folderPath = cmdArgs.Length > 1 ? cmdArgs[1] : null;
 
-        _window = new MainWindow(folderPath);
+        string? listPath = FindArgValue(cmdArgs, "--list");
+        if (listPath is not null)
+        {
+            string? skippedPath = FindArgValue(cmdArgs, "--skipped");
+            string[] filePaths = ReadAndDeleteTempFile(listPath);
+            string[] skippedNames = skippedPath is not null ? ReadAndDeleteTempFile(skippedPath) : Array.Empty<string>();
+
+            _window = new MainWindow(filePaths, skippedNames);
+        }
+        else
+        {
+            string? folderPath = cmdArgs.Length > 1 ? cmdArgs[1] : null;
+            _window = new MainWindow(folderPath);
+        }
+
         _window.Activate();
+    }
+
+    private static string? FindArgValue(string[] cmdArgs, string name)
+    {
+        int index = Array.IndexOf(cmdArgs, name);
+        return (index >= 0 && index + 1 < cmdArgs.Length) ? cmdArgs[index + 1] : null;
+    }
+
+    private static string[] ReadAndDeleteTempFile(string path)
+    {
+        string[] lines = File.ReadAllLines(path, Encoding.UTF8);
+        try
+        {
+            File.Delete(path);
+        }
+        catch (IOException)
+        {
+            // Best-effort cleanup — a leftover temp file is untidy but harmless.
+        }
+
+        return lines;
     }
 }

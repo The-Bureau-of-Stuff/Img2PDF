@@ -16,12 +16,22 @@
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
 
             <InfoBar
-                x:Name="SaveSuccessInfoBar"
+                x:Name="SkippedFilesInfoBar"
                 Grid.Row="0"
+                Severity="Warning"
+                Title="Some items were skipped"
+                Message="{x:Bind ViewModel.SkippedFilesMessage, Mode=OneWay}"
+                IsOpen="{x:Bind ViewModel.HasSkippedFiles, Mode=OneWay}"
+                IsClosable="True"/>
+
+            <InfoBar
+                x:Name="SaveSuccessInfoBar"
+                Grid.Row="1"
                 Severity="Success"
                 Title="Saved"
                 IsOpen="False"
@@ -34,7 +44,7 @@
                 </InfoBar.Content>
             </InfoBar>
 
-            <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="12" Padding="12,8">
+            <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="12" Padding="12,8">
                 <TextBlock Text="Zoom" VerticalAlignment="Center"/>
                 <Slider x:Name="ZoomSlider" Minimum="120" Maximum="400" Value="200" Width="200"/>
                 <Button Content="Save" Click="SaveButton_Click"/>
@@ -45,7 +55,7 @@
                            Visibility="{Binding ErrorMessage, Converter={StaticResource BoolToVisibility}}"/>
             </StackPanel>
 
-            <Expander Grid.Row="2" Header="Options" IsExpanded="False" Margin="12,0,12,8" HorizontalContentAlignment="Stretch">
+            <Expander Grid.Row="3" Header="Options" IsExpanded="False" Margin="12,0,12,8" HorizontalContentAlignment="Stretch">
                 <StackPanel Orientation="Horizontal" Spacing="16" Padding="8">
                     <StackPanel Spacing="4">
                         <TextBlock Text="Page size"/>
@@ -87,7 +97,7 @@
 
             <StackPanel
                 x:Name="SaveProgressPanel"
-                Grid.Row="3"
+                Grid.Row="4"
                 Orientation="Horizontal"
                 Spacing="12"
                 Padding="12,0,12,8"
@@ -98,7 +108,7 @@
 
             <GridView
                 x:Name="PagesGridView"
-                Grid.Row="4"
+                Grid.Row="5"
                 ItemsSource="{x:Bind ViewModel.Pages}"
                 CanReorderItems="True"
                 AllowDrop="True"

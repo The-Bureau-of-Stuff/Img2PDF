@@ -26,15 +26,34 @@ public sealed partial class MainWindow : Window
 
     public MainWindow(string? folderPath)
     {
-        InitializeComponent();
-        Title = "Img2PDF";
-        ViewModel = new MainViewModel(DispatcherQueue);
-        RootGrid.DataContext = ViewModel;
+        ViewModel = InitializeCommon();
 
         if (!string.IsNullOrWhiteSpace(folderPath))
         {
             _ = ViewModel.LoadFolderAsync(folderPath);
         }
+    }
+
+    // Shell extension launch path (spec §4.1 --list handshake) — an explicit file selection
+    // rather than a whole folder. skippedNames are files the shell extension's GetState/Invoke
+    // let through the selection but excluded as unsupported (or a folder) — surfaced via the
+    // warning InfoBar rather than silently dropped.
+    public MainWindow(IReadOnlyList<string> filePaths, IReadOnlyList<string> skippedNames)
+    {
+        ViewModel = InitializeCommon();
+
+        if (filePaths.Count > 0)
+        {
+            _ = ViewModel.LoadFilesAsync(filePaths, skippedNames);
+        }
+    }
+
+    private MainViewModel InitializeCommon()
+    {
+        InitializeComponent();
+        Title = "Img2PDF";
+        var viewModel = new MainViewModel(DispatcherQueue);
+        RootGrid.DataContext = viewModel;
 
         // handledEventsToo: true — GridViewItem marks Enter as handled internally for its own
         // selection-toggle behavior before a normal bubbled KeyDown subscription would ever see it
@@ -42,6 +61,8 @@ public sealed partial class MainWindow : Window
         // reliable way to still receive Enter as a window-wide "Save" shortcut (spec §4.2) regardless
         // of what has focus.
         RootGrid.AddHandler(UIElement.KeyDownEvent, new KeyEventHandler(RootGrid_KeyDown), handledEventsToo: true);
+
+        return viewModel;
     }
 
     private void RootGrid_KeyDown(object sender, KeyRoutedEventArgs e)
