@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<Package
+  xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:com="http://schemas.microsoft.com/appx/manifest/com/windows10"
+  xmlns:desktop4="http://schemas.microsoft.com/appx/manifest/desktop/windows10/4"
+  xmlns:desktop5="http://schemas.microsoft.com/appx/manifest/desktop/windows10/5"
+  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+  IgnorableNamespaces="uap rescap">
+
+  <Identity
+    Name="Img2PDF"
+    Publisher="CN=Img2PDF Dev"
+    Version="0.5.0.0" />
+
+  <Properties>
+    <DisplayName>Img2PDF</DisplayName>
+    <PublisherDisplayName>Img2PDF</PublisherDisplayName>
+    <Logo>Images\StoreLogo.png</Logo>
+  </Properties>
+
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.19041.0" MaxVersionTested="10.0.26100.0" />
+    <!-- Framework-dependent WindowsAppSDK deployment (Img2PDF.App.csproj has
+         WindowsAppSDKSelfContained=false): Windows resolves Microsoft.UI.Xaml's WinRT
+         activation through this separately-installed runtime package, not through our own
+         payload or a bootstrap call. Without this, WinUI activation fails at startup with
+         REGDB_E_CLASSNOTREG. -->
+    <PackageDependency Name="Microsoft.WindowsAppRuntime.2" MinVersion="2.3.1.0" Publisher="CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US" />
+  </Dependencies>
+
+  <Resources>
+    <Resource Language="en-US" />
+  </Resources>
+
+  <Applications>
+    <Application Id="App"
+      Executable="$targetnametoken$.exe"
+      EntryPoint="$targetentrypoint$">
+      <uap:VisualElements
+        DisplayName="Img2PDF"
+        Description="Combine images into a PDF"
+        BackgroundColor="transparent"
+        Square150x150Logo="Images\Square150x150Logo.png"
+        Square44x44Logo="Images\Square44x44Logo.png">
+        <uap:DefaultTile
+          Wide310x150Logo="Images\Wide310x150Logo.png"
+          Square71x71Logo="Images\Square71x71Logo.png"
+          Square310x310Logo="Images\Square310x310Logo.png" />
+      </uap:VisualElements>
+
+      <Extensions>
+        <!-- Manifest-based COM registration — no registry writes. Resolves the same CLSID
+             (Img2PDF.ShellExtension\Guid.h) to the packaged DLL via a surrogate host process,
+             the standard mechanism for a native shell extension inside an MSIX package. -->
+        <com:Extension Category="windows.comServer">
+          <com:ComServer>
+            <com:SurrogateServer DisplayName="Img2PDF Shell Extension">
+              <com:Class Id="6AC60BE2-CE29-4AEA-8BFF-718F5868B942" Path="Img2PDF.ShellExtension\Img2PDF.ShellExtension.dll" ThreadingModel="STA" />
+            </com:SurrogateServer>
+          </com:ComServer>
+        </com:Extension>
+
+        <!-- Type="*" covers files, Type="Directory" covers a directly-selected folder — both
+             point at the same verb/CLSID so GetState remains the sole dynamic decider for
+             mixed or folder selections (spec §4.1). "Directory" is only valid under the
+             desktop5 schema (desktop4:ItemType's Type is restricted to "*" or ".ext"). -->
+        <desktop4:Extension Category="windows.fileExplorerContextMenus">
+          <desktop4:FileExplorerContextMenus>
+            <desktop5:ItemType Type="*">
+              <desktop5:Verb Id="Img2PDF" Clsid="6AC60BE2-CE29-4AEA-8BFF-718F5868B942" />
+            </desktop5:ItemType>
+            <desktop5:ItemType Type="Directory">
+              <desktop5:Verb Id="Img2PDF" Clsid="6AC60BE2-CE29-4AEA-8BFF-718F5868B942" />
+            </desktop5:ItemType>
+          </desktop4:FileExplorerContextMenus>
+        </desktop4:Extension>
+      </Extensions>
+    </Application>
+  </Applications>
+
+  <Capabilities>
+    <rescap:Capability Name="runFullTrust" />
+  </Capabilities>
+</Package>

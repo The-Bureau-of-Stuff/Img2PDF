@@ -4,6 +4,15 @@ obj/
 x64/
 x86/
 ARM64/
+AppPackages/
+BundleArtifacts/
+*.appx
+*.msix
+*.appxsym
+*.msixsym
+
+# Per-dev-machine signing cert — never shared/committed (see M5 plan)
+*.pfx
 
 # IDE
 .vs/

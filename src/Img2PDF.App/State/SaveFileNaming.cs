@@ -3,26 +3,15 @@ namespace Img2PDF.App.State;
 /// <summary>Default output filename rules (spec §4.2) — pure/testable, no I/O beyond File.Exists.</summary>
 public static class SaveFileNaming
 {
-    private static readonly HashSet<string> GenericFolderNames =
-        new(StringComparer.OrdinalIgnoreCase) { "Pictures", "Scans", "Downloads", "Desktop", "Documents" };
-
     /// <summary>
-    /// <c>&lt;SourceFolderName&gt;.pdf</c>, or <c>Scan_yyyy-MM-dd.pdf</c> when the folder path is
-    /// missing or its name is too generic to be useful (e.g. "Pictures").
+    /// <c>Scan_yyyy-MM-dd.pdf</c> — deliberately generic rather than named after the source
+    /// folder or an image filename. A name that matches a folder visible wherever the user
+    /// saves triggers a real Windows Save-dialog behavior: the dialog auto-selects the matching
+    /// folder, and Enter/Save then opens it instead of committing the filename. A source-derived
+    /// name (e.g. the folder's own name) risks exactly that collision far too often — a plain
+    /// date stamp essentially never collides with a folder name.
     /// </summary>
-    public static string ComputeDefaultFileName(string? folderPath)
-    {
-        string? folderName = string.IsNullOrWhiteSpace(folderPath)
-            ? null
-            : Path.GetFileName(folderPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
-
-        if (string.IsNullOrEmpty(folderName) || GenericFolderNames.Contains(folderName))
-        {
-            return $"Scan_{DateTime.Now:yyyy-MM-dd}.pdf";
-        }
-
-        return $"{folderName}.pdf";
-    }
+    public static string ComputeDefaultFileName() => $"Scan_{DateTime.Now:yyyy-MM-dd}.pdf";
 
     /// <summary>Appends " (2)", " (3)", ... until <paramref name="desiredFileName"/> doesn't collide.</summary>
     public static string ResolveCollision(string directory, string desiredFileName)

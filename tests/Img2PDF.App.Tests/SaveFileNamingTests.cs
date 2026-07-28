@@ -5,30 +5,9 @@ namespace Img2PDF.App.Tests;
 public class SaveFileNamingTests
 {
     [Fact]
-    public void ComputeDefaultFileName_UsesFolderName()
+    public void ComputeDefaultFileName_ReturnsDateStamp()
     {
-        string name = SaveFileNaming.ComputeDefaultFileName(@"C:\Users\Gavin\OneDrive\Pictures\Scans\OT Driver");
-
-        Assert.Equal("OT Driver.pdf", name);
-    }
-
-    [Theory]
-    [InlineData(@"C:\Users\Gavin\Pictures")]
-    [InlineData(@"C:\Users\Gavin\Scans")]
-    [InlineData(@"C:\Users\Gavin\Downloads")]
-    [InlineData(@"C:\Users\Gavin\Desktop")]
-    [InlineData(@"C:\Users\Gavin\Documents")]
-    public void ComputeDefaultFileName_GenericFolderName_FallsBackToDateStamp(string folderPath)
-    {
-        string name = SaveFileNaming.ComputeDefaultFileName(folderPath);
-
-        Assert.Equal($"Scan_{DateTime.Now:yyyy-MM-dd}.pdf", name);
-    }
-
-    [Fact]
-    public void ComputeDefaultFileName_NullOrEmptyFolderPath_FallsBackToDateStamp()
-    {
-        string name = SaveFileNaming.ComputeDefaultFileName(null);
+        string name = SaveFileNaming.ComputeDefaultFileName();
 
         Assert.Equal($"Scan_{DateTime.Now:yyyy-MM-dd}.pdf", name);
     }

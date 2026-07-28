@@ -2,6 +2,7 @@
 #include "ExplorerCommand.h"
 #include "SupportedExtensions.h"
 
+#include <appmodel.h>
 #include <objbase.h>
 #include <shlobj.h>
 
@@ -25,11 +26,68 @@ namespace
         return std::filesystem::path(std::wstring(path, length));
     }
 
-    // Same install directory as this DLL — the eventual MSIX layout ships the app exe and this
-    // DLL side by side, so this is the real long-term layout, not a dev-only stand-in.
+    // Two valid layouts: the M4 unpackaged dev-test convention copies the app exe directly
+    // alongside this DLL (flat); the packaged MSIX layout (M5) puts each project reference in
+    // its own subfolder under a shared package root, so the exe is a sibling *folder* away
+    // (Img2PDF.App\Img2PDF.App.exe), not a sibling file. Try the flat layout first since it's
+    // the cheaper check, then fall back to the packaged layout.
     std::filesystem::path GetAppExePath()
     {
-        return GetThisModulePath().parent_path() / L"Img2PDF.App.exe";
+        std::filesystem::path dllDir = GetThisModulePath().parent_path();
+
+        std::filesystem::path flatSibling = dllDir / L"Img2PDF.App.exe";
+        std::error_code ec;
+        if (std::filesystem::exists(flatSibling, ec))
+        {
+            return flatSibling;
+        }
+
+        return dllDir.parent_path() / L"Img2PDF.App" / L"Img2PDF.App.exe";
+    }
+
+    // Empty when unpackaged (M4 dev-testing) — GetCurrentPackageFamilyName returns
+    // APPMODEL_ERROR_NO_PACKAGE in that case, which is expected, not a failure.
+    std::wstring GetPackageFamilyNameIfPackaged()
+    {
+        UINT32 length = 0;
+        if (GetCurrentPackageFamilyName(&length, nullptr) != ERROR_INSUFFICIENT_BUFFER)
+        {
+            return L"";
+        }
+
+        std::wstring name(length, L'\0');
+        if (GetCurrentPackageFamilyName(&length, name.data()) != ERROR_SUCCESS)
+        {
+            return L"";
+        }
+
+        name.resize(length - 1); // length includes the null terminator
+        return name;
+    }
+
+    // A packaged full-trust app cannot be started via a raw ShellExecuteW/CreateProcess on its
+    // exe path — that fails with ERROR_NOT_SUPPORTED (confirmed by testing). It has to be
+    // activated through the AppModel activation service using its AUMID instead. "App" matches
+    // <Application Id="App"> in Package.appxmanifest.
+    HRESULT ActivatePackagedApp(const std::wstring& packageFamilyName, const std::wstring& args)
+    {
+        std::wstring aumid = packageFamilyName + L"!App";
+
+        ComPtr<IApplicationActivationManager> activationManager;
+        HRESULT hr = CoCreateInstance(CLSID_ApplicationActivationManager, nullptr, CLSCTX_LOCAL_SERVER,
+            IID_PPV_ARGS(&activationManager));
+        if (FAILED(hr))
+        {
+            return hr;
+        }
+
+        // Without this, the activated app's window opens behind Explorer — activation through a
+        // COM surrogate doesn't inherit the "user just clicked" foreground rights the way a
+        // direct ShellExecuteW from Explorer's own process would.
+        CoAllowSetForegroundWindow(activationManager.Get(), nullptr);
+
+        DWORD processId = 0;
+        return activationManager->ActivateApplication(aumid.c_str(), args.c_str(), AO_NONE, &processId);
     }
 
     std::vector<std::wstring> GetSelectedPaths(IShellItemArray* items)
@@ -293,7 +351,6 @@ IFACEMETHODIMP ExplorerCommandHandler::Invoke(IShellItemArray* items, IBindCtx* 
         }
 
         std::filesystem::path listFile = WriteLinesFile(supported, L".list");
-        std::filesystem::path appExe = GetAppExePath();
 
         std::wstring args = L"--list \"" + listFile.wstring() + L"\"";
 
@@ -303,6 +360,13 @@ IFACEMETHODIMP ExplorerCommandHandler::Invoke(IShellItemArray* items, IBindCtx* 
             args += L" --skipped \"" + skippedFile.wstring() + L"\"";
         }
 
+        std::wstring packageFamilyName = GetPackageFamilyNameIfPackaged();
+        if (!packageFamilyName.empty())
+        {
+            return ActivatePackagedApp(packageFamilyName, args);
+        }
+
+        std::filesystem::path appExe = GetAppExePath();
         HINSTANCE result = ShellExecuteW(nullptr, L"open", appExe.c_str(), args.c_str(), nullptr, SW_SHOW);
         if (reinterpret_cast<INT_PTR>(result) <= 32)
         {

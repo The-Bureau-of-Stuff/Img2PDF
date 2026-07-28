@@ -9,7 +9,13 @@
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <UseWinUI>true</UseWinUI>
     <WindowsPackageType>None</WindowsPackageType>
-    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <!-- Explicit false (not just omitted) — the WindowsAppSDK build logic silently defaults
+         this back to true whenever it's unset, re-enabling the self-contained loose-deployment
+         bootstrap that crashes (0xc000027b in Microsoft.UI.Xaml.dll) once packaged via MSIX,
+         since packaged apps get WinRT activation from their own package identity instead.
+         Framework-dependent mode requires the Microsoft.WindowsAppSDK.Runtime package below,
+         and the Windows App Runtime installed system-wide (already present on this machine). -->
+    <WindowsAppSDKSelfContained>false</WindowsAppSDKSelfContained>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
@@ -17,6 +23,7 @@
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.3.1" />
+    <PackageReference Include="Microsoft.WindowsAppSDK.Runtime" Version="2.3.1" />
   </ItemGroup>
 
   <ItemGroup>

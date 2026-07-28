@@ -186,14 +186,16 @@ public sealed partial class MainWindow : Window
 
         var picker = new FileSavePicker
         {
-            // FileSavePicker has no supported way to start at an arbitrary folder path (only the
-            // PickerLocationId enum) — Pictures library is the closest reasonable default for
-            // this app's typical source folders. The suggested filename below is still exact.
+            // SuggestedStartLocation only applies the very first time — once SettingsIdentifier
+            // is set, Windows itself remembers the last folder the user actually saved to under
+            // that identifier and starts there on every subsequent save, with no persistence
+            // code needed on our side.
             SuggestedStartLocation = PickerLocationId.PicturesLibrary,
+            SettingsIdentifier = "SaveFolder",
         };
         picker.FileTypeChoices.Add("PDF Document", new List<string> { ".pdf" });
 
-        string desiredName = SaveFileNaming.ComputeDefaultFileName(ViewModel.FolderPath);
+        string desiredName = SaveFileNaming.ComputeDefaultFileName();
         string resolvedName = ViewModel.FolderPath is not null
             ? SaveFileNaming.ResolveCollision(ViewModel.FolderPath, desiredName)
             : desiredName;
