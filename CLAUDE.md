@@ -4,7 +4,17 @@
 A single-purpose Windows utility: select image files in File Explorer, right-click
 **Combine to PDF**, reorder pages as thumbnails in a grid, save as PDF. No PDF editor,
 no OCR, no cloud — see `docs/pagemerge-spec.md` for the full spec (working title
-"PageMerge" in that document; the project itself is named Img2PDF).
+"PageMerge" in that document).
+
+**Naming split, deliberate:** the codebase — repo, solution, all five projects
+(`Img2PDF.App`/`.Core`/`.Cli`/`.ShellExtension`/`.Package`), namespaces, folder names —
+stays `Img2PDF.*`. The product/store-facing name is **Scanstack**: window title, PDF
+`/Producer` metadata, the MSIX manifest's `DisplayName`/`PublisherDisplayName`/
+`SurrogateServer` name, and all `docs/store/*` submission copy. Don't "fix" this
+mismatch by renaming code to match the product name (or vice versa) — it's an
+intentional internal-codename-vs-brand split, not drift. The `Identity Name`/`Publisher`
+in `Package.appxmanifest` are still `Img2PDF`/placeholder pending the real Partner
+Center name reservation (see `docs/store/submission-checklist.md` §1).
 
 ## Build
 ```

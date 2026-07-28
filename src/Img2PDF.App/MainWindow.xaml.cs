@@ -23,6 +23,7 @@ public sealed partial class MainWindow : Window
 
     private CancellationTokenSource? _saveCts;
     private string? _lastSavedPath;
+    private PageItem? _previewItem;
 
     public MainWindow(string? folderPath)
     {
@@ -51,7 +52,7 @@ public sealed partial class MainWindow : Window
     private MainViewModel InitializeCommon()
     {
         InitializeComponent();
-        Title = "Img2PDF";
+        Title = "Scanstack";
         var viewModel = new MainViewModel(DispatcherQueue);
         RootGrid.DataContext = viewModel;
 
@@ -72,6 +73,44 @@ public sealed partial class MainWindow : Window
             _ = SaveAsync();
         }
     }
+
+    // Source of truth stays GridView.SelectedItems; this just mirrors it onto each PageItem so
+    // the DataTemplate can draw its own selection highlight (see MainWindow.xaml's ChromePill
+    // comment for why the container-level template can't do this itself).
+    private void PagesGridView_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        foreach (PageItem item in e.RemovedItems.OfType<PageItem>())
+        {
+            item.IsSelected = false;
+        }
+
+        foreach (PageItem item in e.AddedItems.OfType<PageItem>())
+        {
+            item.IsSelected = true;
+        }
+    }
+
+    // Handled on the tile's root Grid rather than per-button: PointerEntered/Exited only fire at
+    // the boundary of the element they're attached to, so attaching them here means moving the
+    // pointer between the tile and its own buttons never fires Exited — the flicker the old
+    // per-button Visibility toggle had (see IconButtonStyle's comment in the XAML).
+    private void Tile_PointerEntered(object sender, PointerRoutedEventArgs e)
+    {
+        if (((FrameworkElement)sender).FindName("ChromePill") is Border pill)
+        {
+            pill.Opacity = 1.0;
+        }
+    }
+
+    private void Tile_PointerExited(object sender, PointerRoutedEventArgs e)
+    {
+        if (((FrameworkElement)sender).FindName("ChromePill") is Border pill)
+        {
+            pill.Opacity = 0.55;
+        }
+    }
+
+    private void UndoButton_Click(object sender, RoutedEventArgs e) => ViewModel.Undo();
 
     private void RotateButton_Click(object sender, RoutedEventArgs e)
     {
@@ -118,9 +157,11 @@ public sealed partial class MainWindow : Window
             var bitmap = new BitmapImage();
             await bitmap.SetSourceAsync(stream);
 
+            _previewItem = item;
             PreviewImage.Source = bitmap;
             PreviewImageRotation.Angle = item.RotationDegrees;
             PreviewOverlay.Visibility = Visibility.Visible;
+            UpdatePreviewIndicator();
         }
         catch (Exception)
         {
@@ -128,12 +169,60 @@ public sealed partial class MainWindow : Window
         }
     }
 
+    // Left/Right while the overlay is open (wired from PagesGridView_KeyDown) — clamps at the
+    // ends rather than wrapping, which is the less surprising choice for stepping through a
+    // finite page order.
+    private async Task StepPreviewAsync(int delta)
+    {
+        if (_previewItem is null)
+        {
+            return;
+        }
+
+        int index = ViewModel.Pages.IndexOf(_previewItem);
+        int target = index + delta;
+        if (index < 0 || target < 0 || target >= ViewModel.Pages.Count)
+        {
+            return;
+        }
+
+        await ShowPreviewAsync(ViewModel.Pages[target]);
+    }
+
+    private void UpdatePreviewIndicator()
+    {
+        if (_previewItem is null)
+        {
+            return;
+        }
+
+        int index = ViewModel.Pages.IndexOf(_previewItem);
+        PreviewIndicatorText.Text = $"{index + 1} of {ViewModel.Pages.Count}";
+    }
+
     private void PreviewOverlay_Tapped(object sender, TappedRoutedEventArgs e) => ClosePreview();
+
+    private void PreviewCloseButton_Click(object sender, RoutedEventArgs e) => ClosePreview();
+
+    private void PreviewRotateButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_previewItem is not null)
+        {
+            ViewModel.RotateSelected(new[] { _previewItem }, clockwise: true);
+            PreviewImageRotation.Angle = _previewItem.RotationDegrees;
+        }
+    }
+
+    // The overlay's own Background is Tapped-enabled to close on click-outside — since Tapped
+    // bubbles, a control placed inside the overlay (close button, rotate button) needs to stop
+    // that bubble or every click on them would also close the overlay it just acted on.
+    private void StopTappedPropagation(object sender, TappedRoutedEventArgs e) => e.Handled = true;
 
     private void ClosePreview()
     {
         PreviewOverlay.Visibility = Visibility.Collapsed;
         PreviewImage.Source = null;
+        _previewItem = null;
     }
 
     // ComboBox's SelectedIndex="0" in XAML fires SelectionChanged synchronously during
@@ -280,6 +369,16 @@ public sealed partial class MainWindow : Window
         {
             case VirtualKey.Escape:
                 ClosePreview();
+                e.Handled = true;
+                break;
+
+            case VirtualKey.Left when !ctrl && PreviewOverlay.Visibility == Visibility.Visible:
+                _ = StepPreviewAsync(-1);
+                e.Handled = true;
+                break;
+
+            case VirtualKey.Right when !ctrl && PreviewOverlay.Visibility == Visibility.Visible:
+                _ = StepPreviewAsync(1);
                 e.Handled = true;
                 break;
 

@@ -40,7 +40,7 @@ public static class PdfComposer
         // PdfDocumentInformation.Producer has no public setter in a normally-built PDFsharp
         // package (it's gated behind a compile-time flag internal to the library) — set the
         // raw PDF dictionary entry instead.
-        document.Info.Elements.SetString("/Producer", "Img2PDF");
+        document.Info.Elements.SetString("/Producer", "Scanstack");
 
         for (int i = 0; i < pages.Count; i++)
         {

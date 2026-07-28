@@ -48,12 +48,10 @@
     </AppxManifest>
   </ItemGroup>
   <ItemGroup>
-    <Content Include="Images\Square44x44Logo.png" />
-    <Content Include="Images\Square150x150Logo.png" />
-    <Content Include="Images\StoreLogo.png" />
-    <Content Include="Images\Wide310x150Logo.png" />
-    <Content Include="Images\Square71x71Logo.png" />
-    <Content Include="Images\Square310x310Logo.png" />
+    <!-- Globbed rather than listed: tools\generate-icons.py emits 46 files (unqualified
+         defaults plus scale-* and targetsize-* qualifiers) and an explicit list drifts out
+         of sync the moment the icon is regenerated. MakePri indexes the qualifiers. -->
+    <Content Include="Images\*.png" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Img2PDF.App\Img2PDF.App.csproj">

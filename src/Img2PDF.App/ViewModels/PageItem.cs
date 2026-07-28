@@ -53,6 +53,13 @@ public partial class PageItem : ObservableObject
     [ObservableProperty]
     private int _pageNumber;
 
+    // Mirrors GridView.SelectedItems — not authoritative on its own. MainWindow's
+    // SelectionChanged handler is the only writer; this exists purely so the tile's own
+    // DataTemplate can render a selection highlight, since a GridViewItem ControlTemplate has
+    // no visual reach into the content its ContentPresenter hosts.
+    [ObservableProperty]
+    private bool _isSelected;
+
     public void ApplyImageInfo(ImageInfo info)
     {
         PixelWidth = info.PixelWidth;

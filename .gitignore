@@ -14,6 +14,9 @@ BundleArtifacts/
 # Per-dev-machine signing cert — never shared/committed (see M5 plan)
 *.pfx
 
+# Generated icon/logo artifacts — reproducible from tools/generate-icons.py, not source
+tools/out/
+
 # IDE
 .vs/
 .idea/

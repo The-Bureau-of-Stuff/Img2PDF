@@ -9,14 +9,21 @@
   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
   IgnorableNamespaces="uap rescap">
 
+  <!-- Name and Publisher are placeholders for local sideloading only. Before the first
+       Store submission both must be replaced with the values Partner Center assigns on
+       the Product identity page (Name looks like "12345Gavin.Scanstack", Publisher is the
+       full CN=... GUID string). Publisher must also match the dev cert's Subject exactly
+       for Add-AppxPackage to accept a locally-signed build. -->
   <Identity
     Name="Img2PDF"
     Publisher="CN=Img2PDF Dev"
-    Version="0.5.0.0" />
+    Version="0.5.1.0" />
 
   <Properties>
-    <DisplayName>Img2PDF</DisplayName>
-    <PublisherDisplayName>Img2PDF</PublisherDisplayName>
+    <!-- Must match a name reserved in Partner Center character-for-character, or
+         submission fails identity validation. -->
+    <DisplayName>Scanstack</DisplayName>
+    <PublisherDisplayName>Gavin Charlesworth</PublisherDisplayName>
     <Logo>Images\StoreLogo.png</Logo>
   </Properties>
 
@@ -38,10 +45,14 @@
     <Application Id="App"
       Executable="$targetnametoken$.exe"
       EntryPoint="$targetentrypoint$">
+      <!-- BackgroundColor is the plate Windows paints behind the Start tile assets. The
+           Square71/150/310 and Wide310x150 images are deliberately glyph-only on
+           transparency so this colour forms the tile; Square44x44 and StoreLogo carry
+           their own plate because they render standalone in the taskbar and Store. -->
       <uap:VisualElements
-        DisplayName="Img2PDF"
-        Description="Combine images into a PDF"
-        BackgroundColor="transparent"
+        DisplayName="Scanstack"
+        Description="Combine images into a single PDF from File Explorer — reorder pages as thumbnails, rotate, and save. Works entirely offline."
+        BackgroundColor="#31418C"
         Square150x150Logo="Images\Square150x150Logo.png"
         Square44x44Logo="Images\Square44x44Logo.png">
         <uap:DefaultTile
@@ -56,7 +67,7 @@
              the standard mechanism for a native shell extension inside an MSIX package. -->
         <com:Extension Category="windows.comServer">
           <com:ComServer>
-            <com:SurrogateServer DisplayName="Img2PDF Shell Extension">
+            <com:SurrogateServer DisplayName="Scanstack Shell Extension">
               <com:Class Id="6AC60BE2-CE29-4AEA-8BFF-718F5868B942" Path="Img2PDF.ShellExtension\Img2PDF.ShellExtension.dll" ThreadingModel="STA" />
             </com:SurrogateServer>
           </com:ComServer>

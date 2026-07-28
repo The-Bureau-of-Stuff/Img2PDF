@@ -5,9 +5,35 @@
     xmlns:vm="using:Img2PDF.App.ViewModels"
     xmlns:converters="using:Img2PDF.App.Converters">
 
-    <Grid x:Name="RootGrid">
+    <Grid x:Name="RootGrid" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
         <Grid.Resources>
             <converters:BoolToVisibilityConverter x:Key="BoolToVisibility"/>
+            <converters:PageCountConverter x:Key="PageCount"/>
+
+            <!-- Defined here rather than in GridView.Resources: a StaticResource only resolves
+                 against its element's ancestor chain, and the preview overlay's buttons are
+                 siblings of the GridView, not descendants of it — a GridView-scoped style is
+                 invisible to them. That out-of-scope lookup doesn't fail cleanly here; it's a
+                 native crash (0xc000027b), confirmed by bisection, so this isn't just tidiness. -->
+            <Style x:Key="IconButtonStyle" TargetType="Button">
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="Padding" Value="6,4"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border
+                                Background="{TemplateBinding Background}"
+                                Padding="{TemplateBinding Padding}">
+                                <ContentPresenter
+                                    Content="{TemplateBinding Content}"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"/>
+                            </Border>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
         </Grid.Resources>
 
         <Grid>
@@ -15,47 +41,40 @@
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
 
-            <InfoBar
-                x:Name="SkippedFilesInfoBar"
-                Grid.Row="0"
-                Severity="Warning"
-                Title="Some items were skipped"
-                Message="{x:Bind ViewModel.SkippedFilesMessage, Mode=OneWay}"
-                IsOpen="{x:Bind ViewModel.HasSkippedFiles, Mode=OneWay}"
-                IsClosable="True"/>
+            <Grid Grid.Row="0" Padding="12,8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
 
-            <InfoBar
-                x:Name="SaveSuccessInfoBar"
-                Grid.Row="1"
-                Severity="Success"
-                Title="Saved"
-                IsOpen="False"
-                IsClosable="True">
-                <InfoBar.Content>
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <Button Content="Open" Click="OpenSavedFile_Click"/>
-                        <Button Content="Show in folder" Click="ShowSavedFileInFolder_Click"/>
-                    </StackPanel>
-                </InfoBar.Content>
-            </InfoBar>
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                    <TextBlock Text="Zoom" VerticalAlignment="Center"/>
+                    <Slider x:Name="ZoomSlider" Minimum="120" Maximum="400" Value="200" Width="200"/>
+                    <Button
+                        Content="Undo"
+                        Click="UndoButton_Click"
+                        ToolTipService.ToolTip="Undo the last change"
+                        AutomationProperties.Name="Undo"/>
+                    <!-- Classic {Binding}, not x:Bind: x:Bind + Converter fails to compile when the
+                         code-behind root is a Window (not FrameworkElement) — WinUI-desktop limitation. -->
+                    <TextBlock Foreground="{ThemeResource SystemFillColorCriticalBrush}" VerticalAlignment="Center"
+                               Text="{x:Bind ViewModel.ErrorMessage, Mode=OneWay}"
+                               Visibility="{Binding ErrorMessage, Converter={StaticResource BoolToVisibility}}"/>
+                </StackPanel>
 
-            <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="12" Padding="12,8">
-                <TextBlock Text="Zoom" VerticalAlignment="Center"/>
-                <Slider x:Name="ZoomSlider" Minimum="120" Maximum="400" Value="200" Width="200"/>
-                <Button Content="Save" Click="SaveButton_Click"/>
-                <!-- Classic {Binding}, not x:Bind: x:Bind + Converter fails to compile when the
-                     code-behind root is a Window (not FrameworkElement) — WinUI-desktop limitation. -->
-                <TextBlock Foreground="Red" VerticalAlignment="Center"
-                           Text="{x:Bind ViewModel.ErrorMessage, Mode=OneWay}"
-                           Visibility="{Binding ErrorMessage, Converter={StaticResource BoolToVisibility}}"/>
-            </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                    <TextBlock
+                        VerticalAlignment="Center"
+                        Text="{Binding Pages.Count, Converter={StaticResource PageCount}}"/>
+                    <Button Content="Save" Style="{StaticResource AccentButtonStyle}" Click="SaveButton_Click"/>
+                </StackPanel>
+            </Grid>
 
-            <Expander Grid.Row="3" Header="Options" IsExpanded="False" Margin="12,0,12,8" HorizontalContentAlignment="Stretch">
+            <Expander Grid.Row="1" Header="Options" IsExpanded="False" Margin="12,0,12,8"
+                      HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
                 <StackPanel Orientation="Horizontal" Spacing="16" Padding="8">
                     <StackPanel Spacing="4">
                         <TextBlock Text="Page size"/>
@@ -97,7 +116,7 @@
 
             <StackPanel
                 x:Name="SaveProgressPanel"
-                Grid.Row="4"
+                Grid.Row="2"
                 Orientation="Horizontal"
                 Spacing="12"
                 Padding="12,0,12,8"
@@ -108,56 +127,56 @@
 
             <GridView
                 x:Name="PagesGridView"
-                Grid.Row="5"
+                Grid.Row="3"
                 ItemsSource="{x:Bind ViewModel.Pages}"
                 CanReorderItems="True"
                 AllowDrop="True"
                 CanDragItems="True"
                 SelectionMode="Extended"
                 IsItemClickEnabled="False"
+                SelectionChanged="PagesGridView_SelectionChanged"
                 KeyDown="PagesGridView_KeyDown">
                 <GridView.Resources>
                     <!-- GridViewItem's default template paints PointerOver/Pressed/Selected chrome
                          above the item's own content, which was washing out the always-visible
                          corner buttons on hover — overriding individual brush resources didn't
                          fix it, so this replaces the container template entirely with a plain
-                         ContentPresenter (no built-in hover/selection visuals at all). Selection is
-                         drawn manually in the DataTemplate below via the Border bound to IsSelected. -->
+                         ContentPresenter (no built-in hover/pressed/selection visuals). Selection
+                         highlight is drawn manually in the DataTemplate below via PageItem.IsSelected,
+                         since a container-level VisualState can't reach into the ContentPresenter's
+                         own templated content. The FocusStates group here is unrelated to selection —
+                         it restores the keyboard focus rect the container-template swap also removed,
+                         and it *can* be done at this level since it only needs to draw over the
+                         container's own bounds, not react to the bound PageItem. -->
                     <Style x:Key="TileContainerStyle" TargetType="GridViewItem">
                         <Setter Property="Margin" Value="0"/>
                         <Setter Property="Padding" Value="0"/>
                         <Setter Property="Template">
                             <Setter.Value>
                                 <ControlTemplate TargetType="GridViewItem">
-                                    <ContentPresenter
-                                        Content="{TemplateBinding Content}"
-                                        ContentTemplate="{TemplateBinding ContentTemplate}"/>
-                                </ControlTemplate>
-                            </Setter.Value>
-                        </Setter>
-                    </Style>
-
-                    <!-- Button's own default template has a PointerOver visual state that
-                         overrides Background on hover — against the thumbnail underneath, that
-                         read as the button "disappearing". This template is static: no hover,
-                         pressed, or disabled visual changes at all. -->
-                    <Style x:Key="IconButtonStyle" TargetType="Button">
-                        <Setter Property="Background" Value="#AA000000"/>
-                        <Setter Property="BorderThickness" Value="0"/>
-                        <Setter Property="Padding" Value="4"/>
-                        <Setter Property="CornerRadius" Value="4"/>
-                        <Setter Property="Template">
-                            <Setter.Value>
-                                <ControlTemplate TargetType="Button">
-                                    <Border
-                                        Background="{TemplateBinding Background}"
-                                        CornerRadius="{TemplateBinding CornerRadius}"
-                                        Padding="{TemplateBinding Padding}">
+                                    <Grid>
                                         <ContentPresenter
                                             Content="{TemplateBinding Content}"
-                                            HorizontalAlignment="Center"
-                                            VerticalAlignment="Center"/>
-                                    </Border>
+                                            ContentTemplate="{TemplateBinding ContentTemplate}"/>
+                                        <Border
+                                            x:Name="FocusVisual"
+                                            BorderBrush="{ThemeResource SystemControlFocusVisualPrimaryBrush}"
+                                            BorderThickness="2"
+                                            CornerRadius="4"
+                                            IsHitTestVisible="False"
+                                            Opacity="0"/>
+                                        <VisualStateManager.VisualStateGroups>
+                                            <VisualStateGroup x:Name="FocusStates">
+                                                <VisualState x:Name="Focused">
+                                                    <VisualState.Setters>
+                                                        <Setter Target="FocusVisual.Opacity" Value="1"/>
+                                                    </VisualState.Setters>
+                                                </VisualState>
+                                                <VisualState x:Name="Unfocused"/>
+                                                <VisualState x:Name="PointerFocused"/>
+                                            </VisualStateGroup>
+                                        </VisualStateManager.VisualStateGroups>
+                                    </Grid>
                                 </ControlTemplate>
                             </Setter.Value>
                         </Setter>
@@ -173,7 +192,9 @@
                             Width="{Binding ElementName=ZoomSlider, Path=Value}"
                             Height="{Binding ElementName=ZoomSlider, Path=Value}"
                             Margin="4"
-                            DoubleTapped="Tile_DoubleTapped">
+                            DoubleTapped="Tile_DoubleTapped"
+                            PointerEntered="Tile_PointerEntered"
+                            PointerExited="Tile_PointerExited">
 
                             <Border
                                 Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
@@ -181,69 +202,157 @@
                                 BorderThickness="1"
                                 CornerRadius="4">
                                 <Grid>
-                                    <Image
-                                        Source="{x:Bind ThumbnailSource, Mode=OneWay}"
-                                        Stretch="Uniform"
-                                        RenderTransformOrigin="0.5,0.5">
-                                        <Image.RenderTransform>
-                                            <RotateTransform Angle="{x:Bind RotationDegrees, Mode=OneWay}"/>
-                                        </Image.RenderTransform>
-                                    </Image>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="*"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
 
-                                    <!-- Plain text, not ProgressRing: ProgressRing.IsActive crashed
-                                         natively (Microsoft.UI.Xaml.dll, 0xc000027b) inside this
-                                         virtualized GridView item template — confirmed via
-                                         bisection, see project memory (winui-native-crash-notes). -->
-                                    <TextBlock
-                                        Text="Loading…"
-                                        Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibility}}"
-                                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    <Grid Grid.Row="0">
+                                        <Image
+                                            Source="{x:Bind ThumbnailSource, Mode=OneWay}"
+                                            Stretch="Uniform"
+                                            RenderTransformOrigin="0.5,0.5">
+                                            <Image.RenderTransform>
+                                                <RotateTransform Angle="{x:Bind RotationDegrees, Mode=OneWay}"/>
+                                            </Image.RenderTransform>
+                                        </Image>
 
-                                    <StackPanel
-                                        Visibility="{Binding HasError, Converter={StaticResource BoolToVisibility}}"
-                                        ToolTipService.ToolTip="{Binding ErrorDetail}"
-                                        HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="4">
-                                        <FontIcon Glyph="&#xE783;" FontSize="24" Foreground="Red"/>
-                                        <TextBlock Text="Can't load" FontSize="11" HorizontalAlignment="Center"/>
-                                    </StackPanel>
+                                        <!-- Plain text, not ProgressRing: ProgressRing.IsActive crashed
+                                             natively (Microsoft.UI.Xaml.dll, 0xc000027b) inside this
+                                             virtualized GridView item template — confirmed via
+                                             bisection, see project memory (winui-native-crash-notes). -->
+                                        <TextBlock
+                                            Text="Loading…"
+                                            Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibility}}"
+                                            HorizontalAlignment="Center" VerticalAlignment="Center"/>
+
+                                        <StackPanel
+                                            Visibility="{Binding HasError, Converter={StaticResource BoolToVisibility}}"
+                                            ToolTipService.ToolTip="{Binding ErrorDetail}"
+                                            HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="4">
+                                            <FontIcon Glyph="&#xE783;" FontSize="24"
+                                                      Foreground="{ThemeResource SystemFillColorCriticalBrush}"/>
+                                            <TextBlock Text="Can't load" FontSize="11" HorizontalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Grid>
+
+                                    <!-- Filename + chrome share the bottom row so the buttons no
+                                         longer cover the page header, which is where the letterhead/
+                                         title/first column live — the part that actually tells one
+                                         page from another (spec §2). Both are inside the card Border's
+                                         own clip, unlike before, so a long filename ellipsises instead
+                                         of spilling past the tile. -->
+                                    <Grid Grid.Row="1" Padding="4,2">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <Border
+                                            Grid.Column="0"
+                                            Background="{ThemeResource AcrylicInAppFillColorDefaultBrush}"
+                                            CornerRadius="4" Padding="6,2" Margin="0,0,4,0">
+                                            <TextBlock
+                                                Text="{x:Bind FileName}"
+                                                Foreground="{ThemeResource TextFillColorPrimaryBrush}"
+                                                FontSize="11"
+                                                TextTrimming="CharacterEllipsis" MaxLines="1"/>
+                                        </Border>
+
+                                        <!-- One pill, not three separate chips: three opaque
+                                             rectangles per tile added up to dozens of competing
+                                             rectangles across a full grid. Always visible (double-click
+                                             isn't discoverable, so the magnifier is the discoverable
+                                             preview path, not a redundant one) but quiet at rest —
+                                             Tile_PointerEntered/Exited raise this pill's Opacity on
+                                             hover rather than toggling Visibility, which used to
+                                             flicker as the pointer crossed from the tile onto the
+                                             buttons themselves. -->
+                                        <Border
+                                            x:Name="ChromePill"
+                                            Grid.Column="1"
+                                            Background="{ThemeResource AcrylicInAppFillColorDefaultBrush}"
+                                            CornerRadius="12"
+                                            Padding="2"
+                                            Opacity="0.55">
+                                            <StackPanel Orientation="Horizontal" Spacing="0">
+                                                <Button Style="{StaticResource IconButtonStyle}" Tag="{x:Bind}" Click="PreviewButton_Click"
+                                                        ToolTipService.ToolTip="Preview page"
+                                                        AutomationProperties.Name="Preview page">
+                                                    <FontIcon Glyph="&#xE71E;" FontSize="14" Foreground="{ThemeResource TextFillColorPrimaryBrush}"/>
+                                                </Button>
+                                                <Button Style="{StaticResource IconButtonStyle}" Tag="{x:Bind}" Click="RotateButton_Click"
+                                                        ToolTipService.ToolTip="Rotate right"
+                                                        AutomationProperties.Name="Rotate right">
+                                                    <FontIcon Glyph="&#xE7AD;" FontSize="14" Foreground="{ThemeResource TextFillColorPrimaryBrush}"/>
+                                                </Button>
+                                                <Button Style="{StaticResource IconButtonStyle}" Tag="{x:Bind}" Click="RemoveButton_Click"
+                                                        ToolTipService.ToolTip="Remove from document"
+                                                        AutomationProperties.Name="Remove from document">
+                                                    <FontIcon Glyph="&#xE711;" FontSize="14" Foreground="{ThemeResource TextFillColorPrimaryBrush}"/>
+                                                </Button>
+                                            </StackPanel>
+                                        </Border>
+                                    </Grid>
                                 </Grid>
                             </Border>
 
+                            <!-- Selection highlight: PageItem.IsSelected mirrors GridView.SelectedItems
+                                 (kept authoritative) via MainWindow's SelectionChanged handler. Two
+                                 layers so the tint stays subtle while the stroke stays crisp — a
+                                 single element at low Opacity would fade the border too. -->
                             <Border
-                                Background="{ThemeResource SystemAccentColor}"
+                                Visibility="{Binding IsSelected, Converter={StaticResource BoolToVisibility}}"
+                                Background="{ThemeResource AccentFillColorDefaultBrush}"
+                                Opacity="0.12"
+                                CornerRadius="4"
+                                IsHitTestVisible="False"/>
+                            <Border
+                                Visibility="{Binding IsSelected, Converter={StaticResource BoolToVisibility}}"
+                                BorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
+                                BorderThickness="2"
+                                CornerRadius="4"
+                                IsHitTestVisible="False"/>
+
+                            <Border
+                                Background="{ThemeResource AccentFillColorDefaultBrush}"
                                 CornerRadius="10" Padding="8,2" Margin="6"
                                 HorizontalAlignment="Left" VerticalAlignment="Top">
-                                <TextBlock Text="{x:Bind PageNumber, Mode=OneWay}" Foreground="White" FontSize="12"/>
-                            </Border>
-
-                            <!-- Always visible, not hover-reveal: toggling Visibility off
-                                 PointerEntered/Exited flickered when the pointer crossed onto the
-                                 buttons themselves — a known WinUI nested-hit-test quirk. Simpler
-                                 and more reliable to just keep these small and semi-transparent. -->
-                            <StackPanel
-                                Orientation="Horizontal" Spacing="4" Margin="6"
-                                HorizontalAlignment="Right" VerticalAlignment="Top">
-                                <Button Style="{StaticResource IconButtonStyle}" Tag="{x:Bind}" Click="PreviewButton_Click">
-                                    <FontIcon Glyph="&#xE71E;" FontSize="14" Foreground="White"/>
-                                </Button>
-                                <Button Style="{StaticResource IconButtonStyle}" Tag="{x:Bind}" Click="RotateButton_Click">
-                                    <FontIcon Glyph="&#xE7AD;" FontSize="14" Foreground="White"/>
-                                </Button>
-                                <Button Style="{StaticResource IconButtonStyle}" Tag="{x:Bind}" Click="RemoveButton_Click">
-                                    <FontIcon Glyph="&#xE711;" FontSize="14" Foreground="White"/>
-                                </Button>
-                            </StackPanel>
-
-                            <Border Background="#AA000000" VerticalAlignment="Bottom" Padding="6,2">
-                                <TextBlock
-                                    Text="{x:Bind FileName}" Foreground="White" FontSize="11"
-                                    TextTrimming="CharacterEllipsis" MaxLines="1"/>
+                                <TextBlock Text="{x:Bind PageNumber, Mode=OneWay}"
+                                           Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}" FontSize="12"/>
                             </Border>
                         </Grid>
                     </DataTemplate>
                 </GridView.ItemTemplate>
             </GridView>
         </Grid>
+
+        <!-- Floating, not row-based: an Auto row here used to shift the whole grid down by however
+             tall the open bar was (spec regression — the user is looking at the grid when the save
+             confirmation appears, and it moved under them). These overlay the content instead. -->
+        <StackPanel VerticalAlignment="Top" HorizontalAlignment="Stretch" Margin="12,8" Spacing="8">
+            <InfoBar
+                x:Name="SkippedFilesInfoBar"
+                Severity="Warning"
+                Title="Some items were skipped"
+                Message="{x:Bind ViewModel.SkippedFilesMessage, Mode=OneWay}"
+                IsOpen="{x:Bind ViewModel.HasSkippedFiles, Mode=OneWay}"
+                IsClosable="True"/>
+
+            <InfoBar
+                x:Name="SaveSuccessInfoBar"
+                Severity="Success"
+                Title="Saved"
+                IsOpen="False"
+                IsClosable="True">
+                <InfoBar.Content>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button Content="Open" Click="OpenSavedFile_Click"/>
+                        <Button Content="Show in folder" Click="ShowSavedFileInFolder_Click"/>
+                    </StackPanel>
+                </InfoBar.Content>
+            </InfoBar>
+        </StackPanel>
 
         <Grid
             x:Name="PreviewOverlay"
@@ -255,6 +364,31 @@
                     <RotateTransform x:Name="PreviewImageRotation"/>
                 </Image.RenderTransform>
             </Image>
+
+            <Button
+                Style="{StaticResource IconButtonStyle}"
+                HorizontalAlignment="Right" VerticalAlignment="Top" Margin="16"
+                Click="PreviewCloseButton_Click"
+                Tapped="StopTappedPropagation"
+                ToolTipService.ToolTip="Close preview"
+                AutomationProperties.Name="Close preview">
+                <FontIcon Glyph="&#xE711;" FontSize="18" Foreground="White"/>
+            </Button>
+
+            <Button
+                Style="{StaticResource IconButtonStyle}"
+                HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="24"
+                Click="PreviewRotateButton_Click"
+                Tapped="StopTappedPropagation"
+                ToolTipService.ToolTip="Rotate right"
+                AutomationProperties.Name="Rotate right">
+                <FontIcon Glyph="&#xE7AD;" FontSize="18" Foreground="White"/>
+            </Button>
+
+            <TextBlock
+                x:Name="PreviewIndicatorText"
+                HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,24"
+                Foreground="White" FontSize="14"/>
         </Grid>
     </Grid>
 </Window>
