@@ -191,6 +191,7 @@
 
                                     <StackPanel
                                         Visibility="{Binding HasError, Converter={StaticResource BoolToVisibility}}"
+                                        ToolTipService.ToolTip="{Binding ErrorDetail}"
                                         HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="4">
                                         <FontIcon Glyph="&#xE783;" FontSize="24" Foreground="Red"/>
                                         <TextBlock Text="Can't load" FontSize="11" HorizontalAlignment="Center"/>

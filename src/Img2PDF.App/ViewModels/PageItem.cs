@@ -43,6 +43,11 @@ public partial class PageItem : ObservableObject
     [ObservableProperty]
     private bool _hasError;
 
+    // Populated only when HasError is set, for the tile's tooltip (spec §8 item 7 — e.g. a
+    // missing HEIF codec gets an actionable message instead of a bare "Can't load").
+    [ObservableProperty]
+    private string? _errorDetail;
+
     // Kept in sync by MainViewModel after every reorder/remove — not authoritative on its own,
     // just a bindable mirror of the item's current position in the page collection.
     [ObservableProperty]

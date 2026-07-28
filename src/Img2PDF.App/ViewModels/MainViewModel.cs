@@ -16,9 +16,15 @@ public partial class MainViewModel : ObservableObject
     // Matches the shell extension's registered file types (spec §4.1) — broader than M1's
     // JPEG-only scope, since thumbnail decode via WIC works uniformly across all of these.
     private static readonly string[] SupportedExtensions =
-        { ".jpg", ".jpeg", ".png", ".heic", ".tif", ".tiff", ".bmp", ".webp" };
+        { ".jpg", ".jpeg", ".png", ".heic", ".tif", ".tiff", ".bmp", ".webp", ".gif" };
 
     private const int MaxConcurrentThumbnailLoads = 4;
+
+    // WIC's "no codec registered for this container" HRESULT. On a clean Windows install this is
+    // what HEIC/HEIF decode fails with until the user installs the free Microsoft Store "HEIF
+    // Image Extensions" — worth a specific message rather than a bare "Can't load" (spec §8 item 7).
+    private const int WinCodecErrComponentNotFound = unchecked((int)0x88982F50);
+    private static readonly string[] HeifExtensions = { ".heic", ".heif" };
 
     private readonly UndoStack<Action> _undoStack = new(capacity: 20);
     private readonly SemaphoreSlim _thumbnailSemaphore = new(MaxConcurrentThumbnailLoads);
@@ -292,13 +298,15 @@ public partial class MainViewModel : ObservableObject
                 }
             });
         }
-        catch (Exception)
+        catch (Exception ex)
         {
             // Per-tile error state, not a crash (spec acceptance criteria) — corrupt/unreadable
             // source files shouldn't take down the whole load.
+            string detail = DescribeLoadError(ex, item.SourcePath);
             _dispatcherQueue.TryEnqueue(() =>
             {
                 item.HasError = true;
+                item.ErrorDetail = detail;
                 item.IsLoading = false;
             });
         }
@@ -306,5 +314,17 @@ public partial class MainViewModel : ObservableObject
         {
             _thumbnailSemaphore.Release();
         }
+    }
+
+    private static string DescribeLoadError(Exception ex, string sourcePath)
+    {
+        bool isHeif = HeifExtensions.Contains(Path.GetExtension(sourcePath), StringComparer.OrdinalIgnoreCase);
+        if (isHeif && ex.HResult == WinCodecErrComponentNotFound)
+        {
+            return "This HEIC photo needs the free \"HEIF Image Extensions\" app from the Microsoft Store " +
+                "to open. Search for it by name in the Store, install it, then reload this file.";
+        }
+
+        return ex.Message;
     }
 }
