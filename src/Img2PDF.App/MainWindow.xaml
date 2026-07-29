@@ -409,6 +409,24 @@
             HorizontalAlignment="Left"
             VerticalAlignment="Bottom"/>
 
+        <!-- Hidden on the empty state — that already has its own "Choose images…" button, this
+             would just be a redundant second affordance for the same action. Shown once there's
+             at least one page, so images can still be added to a set the shell extension already
+             launched with (drag-and-drop onto RootGrid does the same, in both states). -->
+        <Button
+            Style="{StaticResource AccentButtonStyle}"
+            Click="AddMoreButton_Click"
+            HorizontalAlignment="Right"
+            VerticalAlignment="Bottom"
+            Margin="24"
+            Padding="14"
+            CornerRadius="24"
+            Visibility="{Binding ShowEmptyState, Converter={StaticResource BoolToVisibility}, ConverterParameter=Invert}"
+            ToolTipService.ToolTip="Add more images"
+            AutomationProperties.Name="Add more images">
+            <FontIcon Glyph="&#xE710;" FontSize="18"/>
+        </Button>
+
         <Grid
             x:Name="PreviewOverlay"
             Background="#CC000000"

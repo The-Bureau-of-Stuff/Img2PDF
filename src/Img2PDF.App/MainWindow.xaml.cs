@@ -317,7 +317,13 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private async void ChooseImagesButton_Click(object sender, RoutedEventArgs e)
+    private async void ChooseImagesButton_Click(object sender, RoutedEventArgs e) => await PickImagesAsync();
+
+    // Floating "+" — always visible, not just on the empty state: lets images be added to a set
+    // the shell extension already launched with, not just to a from-scratch session.
+    private async void AddMoreButton_Click(object sender, RoutedEventArgs e) => await PickImagesAsync();
+
+    private async Task PickImagesAsync()
     {
         var picker = new FileOpenPicker { ViewMode = PickerViewMode.Thumbnail };
         foreach (string extension in MainViewModel.SupportedFileTypeFilters)
@@ -328,19 +334,29 @@ public sealed partial class MainWindow : Window
         WinRT.Interop.InitializeWithWindow.Initialize(picker, WinRT.Interop.WindowNative.GetWindowHandle(this));
 
         IReadOnlyList<StorageFile> files = await picker.PickMultipleFilesAsync();
-        if (files.Count > 0)
+        if (files.Count == 0)
         {
-            _ = ViewModel.LoadFilesAsync(files.Select(f => f.Path).ToList(), Array.Empty<string>());
+            return;
+        }
+
+        List<string> paths = files.Select(f => f.Path).ToList();
+        if (ViewModel.Pages.Count == 0)
+        {
+            _ = ViewModel.LoadFilesAsync(paths, Array.Empty<string>());
+        }
+        else
+        {
+            _ = ViewModel.AppendFilesAsync(paths, Array.Empty<string>());
         }
     }
 
-    // Spec §4.2 Startup — "accept drag-and-drop of files onto the window." Scoped to the empty
-    // state deliberately: LoadFilesAsync -> LoadPagesAsync always clears the undo stack, so
-    // reusing it to append onto an already-loaded set would silently wipe undo history. Adding
-    // more images to an in-progress session would need its own append path, not this one.
+    // Spec §4.2 Startup — "accept drag-and-drop of files onto the window" — extended to also
+    // accept drops onto an already-loaded set (appends via ViewModel.AppendFilesAsync, which —
+    // unlike LoadFilesAsync/LoadPagesAsync — doesn't clear the undo stack or re-load existing
+    // pages' thumbnails).
     private void RootGrid_DragOver(object sender, DragEventArgs e)
     {
-        if (ViewModel.Pages.Count == 0 && e.DataView.Contains(StandardDataFormats.StorageItems))
+        if (e.DataView.Contains(StandardDataFormats.StorageItems))
         {
             e.AcceptedOperation = DataPackageOperation.Copy;
         }
@@ -348,7 +364,7 @@ public sealed partial class MainWindow : Window
 
     private async void RootGrid_Drop(object sender, DragEventArgs e)
     {
-        if (ViewModel.Pages.Count > 0 || !e.DataView.Contains(StandardDataFormats.StorageItems))
+        if (!e.DataView.Contains(StandardDataFormats.StorageItems))
         {
             return;
         }
@@ -373,9 +389,18 @@ public sealed partial class MainWindow : Window
             }
         }
 
-        if (supported.Count > 0 || unsupported.Count > 0)
+        if (supported.Count == 0 && unsupported.Count == 0)
+        {
+            return;
+        }
+
+        if (ViewModel.Pages.Count == 0)
         {
             _ = ViewModel.LoadFilesAsync(supported, unsupported);
+        }
+        else
+        {
+            _ = ViewModel.AppendFilesAsync(supported, unsupported);
         }
     }
 

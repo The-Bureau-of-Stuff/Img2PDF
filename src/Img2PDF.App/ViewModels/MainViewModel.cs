@@ -130,13 +130,78 @@ public partial class MainViewModel : ObservableObject
     public Task LoadFilesAsync(IReadOnlyList<string> filePaths, IReadOnlyList<string> skippedNames)
     {
         FolderPath = filePaths.Count > 0 ? Path.GetDirectoryName(filePaths[0]) : null;
+        SetSkippedFiles(skippedNames);
+        return LoadPagesAsync(filePaths);
+    }
 
+    // Adds more images to an already-loaded set — drag-and-drop or the "+" button onto a
+    // non-empty grid. Deliberately separate from LoadFilesAsync/LoadPagesAsync, which always
+    // clear the undo stack and re-load every page's thumbnail (right for a fresh load, wrong
+    // here — appending should be one undoable step on top of whatever the user has already
+    // done, and only the newly-added items need their thumbnails decoded).
+    public async Task AppendFilesAsync(IReadOnlyList<string> filePaths, IReadOnlyList<string> skippedNames)
+    {
+        SetSkippedFiles(skippedNames);
+        if (filePaths.Count == 0)
+        {
+            return;
+        }
+
+        IsLoading = true;
+        try
+        {
+            List<PageItem> previousOrder = Pages.ToList();
+            List<PageItem> newItems = filePaths
+                .OrderBy(p => p, NaturalSortComparer.Instance)
+                .Select(p => new PageItem(p))
+                .ToList();
+
+            _suppressCollectionTracking = true;
+            foreach (PageItem item in newItems)
+            {
+                Pages.Add(item);
+            }
+
+            // Re-sort the whole set (existing + new) per the active sort choice, so appended
+            // images land in the right position rather than always tacking on at the end.
+            if (CurrentSortOrder != SortOrder.NameNatural)
+            {
+                List<PageItem> sorted = ComputeSortedOrder(CurrentSortOrder);
+                Pages.Clear();
+                foreach (PageItem item in sorted)
+                {
+                    Pages.Add(item);
+                }
+            }
+            _suppressCollectionTracking = false;
+            RenumberPages();
+
+            _undoStack.Push(() =>
+            {
+                _suppressCollectionTracking = true;
+                Pages.Clear();
+                foreach (PageItem item in previousOrder)
+                {
+                    Pages.Add(item);
+                }
+                _suppressCollectionTracking = false;
+                RenumberPages();
+            });
+
+            await Task.WhenAll(newItems.Select(LoadPageAsync));
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private void SetSkippedFiles(IReadOnlyList<string> skippedNames)
+    {
         HasSkippedFiles = skippedNames.Count > 0;
         SkippedFilesMessage = HasSkippedFiles
             ? $"{skippedNames.Count} item(s) skipped: {string.Join(", ", skippedNames)}"
             : null;
-
-        return LoadPagesAsync(filePaths);
     }
 
     private async Task LoadPagesAsync(IEnumerable<string> paths)
@@ -178,15 +243,19 @@ public partial class MainViewModel : ObservableObject
 
     public void ApplySort(SortOrder order)
     {
+        CurrentSortOrder = order;
+        ApplyOrder(ComputeSortedOrder(order));
+    }
+
+    private List<PageItem> ComputeSortedOrder(SortOrder order)
+    {
         IOrderedEnumerable<PageItem> ordered = order switch
         {
             SortOrder.DateTaken => Pages.OrderBy(p => p.DateTaken ?? p.FileModifiedUtc),
             SortOrder.DateModified => Pages.OrderBy(p => p.FileModifiedUtc),
             _ => Pages.OrderBy(p => p.FileName, NaturalSortComparer.Instance),
         };
-
-        CurrentSortOrder = order;
-        ApplyOrder(ordered.ToList());
+        return ordered.ToList();
     }
 
     public void ReverseOrder() => ApplyOrder(Pages.Reverse().ToList());
