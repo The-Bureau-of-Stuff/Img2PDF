@@ -65,6 +65,14 @@ public sealed partial class MainWindow : Window
         // of what has focus.
         RootGrid.AddHandler(UIElement.KeyDownEvent, new KeyEventHandler(RootGrid_KeyDown), handledEventsToo: true);
 
+        // Package.appxmanifest's Square44x44Logo only covers the Start tile/pinned-shortcut
+        // icon and (when packaged) the taskbar — the running window's own titlebar icon needs
+        // this explicit call regardless of packaging state, or it falls back to WinUI's
+        // generic default icon.
+        IntPtr hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
+        Microsoft.UI.WindowId windowId = Microsoft.UI.Win32Interop.GetWindowIdFromWindow(hwnd);
+        Microsoft.UI.Windowing.AppWindow.GetFromWindowId(windowId).SetIcon("Assets\\Scanstack.ico");
+
         AppSettingsData settings = AppSettings.Load();
         ZoomSlider.Value = settings.ZoomValue;
         viewModel.CurrentSortOrder = settings.LastSortOrder;

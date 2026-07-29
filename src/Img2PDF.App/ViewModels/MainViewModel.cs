@@ -99,7 +99,6 @@ public partial class MainViewModel : ObservableObject
     public async Task LoadFolderAsync(string folderPath)
     {
         FolderPath = folderPath;
-        ShowEmptyState = false;
 
         // Directory.EnumerateFiles validates the path eagerly (throws synchronously at the call
         // site, not lazily during enumeration) — catch it here rather than letting it escape the
@@ -115,7 +114,6 @@ public partial class MainViewModel : ObservableObject
         catch (Exception ex)
         {
             ErrorMessage = ex.Message;
-            ShowEmptyState = true;
             return;
         }
 
@@ -129,7 +127,6 @@ public partial class MainViewModel : ObservableObject
     public Task LoadFilesAsync(IReadOnlyList<string> filePaths, IReadOnlyList<string> skippedNames)
     {
         FolderPath = filePaths.Count > 0 ? Path.GetDirectoryName(filePaths[0]) : null;
-        ShowEmptyState = filePaths.Count == 0;
 
         HasSkippedFiles = skippedNames.Count > 0;
         SkippedFilesMessage = HasSkippedFiles
@@ -377,8 +374,15 @@ public partial class MainViewModel : ObservableObject
         RenumberPages();
     }
 
+    // The one place called after every single Pages mutation (load, remove, sort, reorder, and
+    // each operation's undo) — the single choke point for keeping ShowEmptyState correct, rather
+    // than re-deriving it ad hoc at each call site and risking a path that forgets to (which is
+    // exactly how removing every page previously left the empty state hidden with nothing to
+    // recover with).
     private void RenumberPages()
     {
+        ShowEmptyState = Pages.Count == 0;
+
         for (int i = 0; i < Pages.Count; i++)
         {
             Pages[i].PageNumber = i + 1;

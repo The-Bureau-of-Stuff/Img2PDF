@@ -1,9 +1,16 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" width="96" height="96" role="img">
   <title>Scanstack</title>
-  <desc>A fanned stack of three sheets on a rounded indigo tile, the front sheet carrying a red badge.</desc>
+  <desc>A fanned stack of three sheets on a rounded indigo tile, the front sheet carrying a red foot band.</desc>
   <rect x="0" y="0" width="96" height="96" rx="22" fill="#31418C"/>
-  <rect x="30" y="22" width="40" height="52" rx="4" fill="#FFFFFF" opacity="0.38" transform="rotate(-15 50 48)"/>
-  <rect x="30" y="22" width="40" height="52" rx="4" fill="#FFFFFF" opacity="0.62" transform="rotate(-7.5 50 48)"/>
-  <rect x="30" y="22" width="40" height="52" rx="4" fill="#FFFFFF"/>
-  <rect x="37" y="57" width="26" height="11" rx="3" fill="#E04A3F"/>
+  <rect x="28" y="22" width="40" height="52" rx="4" fill="#FFFFFF" opacity="0.38" transform="rotate(-15 48 48)"/>
+  <rect x="28" y="22" width="40" height="52" rx="4" fill="#FFFFFF" opacity="0.62" transform="rotate(-7.5 48 48)"/>
+  <rect x="28" y="22" width="40" height="52" rx="4" fill="#FFFFFF"/>
+  <!-- Foot band, not a centered badge: full sheet width, flush to the sheet's own bottom
+       corners. A small centered chip (the original design) reads poorly at 16-24px sizes
+       (taskbar/titlebar) — this two-rect technique (rounded rect + square-off overlay)
+       mirrors tools/generate-icons.py's render_master() exactly, corner-for-corner, so this
+       file stays the true preview of what actually ships rather than a second, drifting
+       implementation of the same mark. -->
+  <rect x="28" y="56" width="40" height="18" rx="4" fill="#E04A3F"/>
+  <rect x="28" y="56" width="40" height="6" fill="#E04A3F"/>
 </svg>

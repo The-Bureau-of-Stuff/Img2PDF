@@ -172,6 +172,7 @@
                 CanDragItems="True"
                 SelectionMode="Extended"
                 IsItemClickEnabled="False"
+                Visibility="{Binding ShowEmptyState, Converter={StaticResource BoolToVisibility}, ConverterParameter=Invert}"
                 SelectionChanged="PagesGridView_SelectionChanged"
                 KeyDown="PagesGridView_KeyDown">
                 <GridView.Resources>
