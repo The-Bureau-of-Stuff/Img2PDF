@@ -58,11 +58,6 @@
                         Click="UndoButton_Click"
                         ToolTipService.ToolTip="Undo the last change"
                         AutomationProperties.Name="Undo"/>
-                    <!-- Classic {Binding}, not x:Bind: x:Bind + Converter fails to compile when the
-                         code-behind root is a Window (not FrameworkElement) — WinUI-desktop limitation. -->
-                    <TextBlock Foreground="{ThemeResource SystemFillColorCriticalBrush}" VerticalAlignment="Center"
-                               Text="{x:Bind ViewModel.ErrorMessage, Mode=OneWay}"
-                               Visibility="{Binding ErrorMessage, Converter={StaticResource BoolToVisibility}}"/>
                 </StackPanel>
 
                 <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
@@ -330,7 +325,7 @@
         <!-- Floating, not row-based: an Auto row here used to shift the whole grid down by however
              tall the open bar was (spec regression — the user is looking at the grid when the save
              confirmation appears, and it moved under them). These overlay the content instead. -->
-        <StackPanel VerticalAlignment="Top" HorizontalAlignment="Stretch" Margin="12,8" Spacing="8">
+        <StackPanel VerticalAlignment="Bottom" HorizontalAlignment="Stretch" Margin="12,8" Spacing="8">
             <InfoBar
                 x:Name="SkippedFilesInfoBar"
                 Severity="Warning"
@@ -353,6 +348,18 @@
                 </InfoBar.Content>
             </InfoBar>
         </StackPanel>
+
+        <!-- Classic {Binding}, not x:Bind: x:Bind + Converter fails to compile when the
+             code-behind root is a Window (not FrameworkElement) — WinUI-desktop limitation.
+             Floating, not row-based, for the same reason as the InfoBars above: an Auto row
+             here would shift the GridView content when an error appears. -->
+        <TextBlock
+            Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+            Text="{x:Bind ViewModel.ErrorMessage, Mode=OneWay}"
+            Visibility="{Binding ErrorMessage, Converter={StaticResource BoolToVisibility}}"
+            Margin="12,8"
+            HorizontalAlignment="Left"
+            VerticalAlignment="Bottom"/>
 
         <Grid
             x:Name="PreviewOverlay"
