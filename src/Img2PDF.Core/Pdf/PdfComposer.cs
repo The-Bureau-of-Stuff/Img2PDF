@@ -126,10 +126,18 @@ public static class PdfComposer
             return;
         }
 
-        // Invisible-but-searchable: alpha-0 fill still emits the PDF text-showing operator (PDFsharp's
-        // renderer has no brush-alpha short-circuit), which is what any reader's text extraction/
-        // search/copy relies on — visibility and text-extractability are independent in a PDF.
-        var invisibleBrush = new XSolidBrush(XColor.FromArgb(0, 0, 0, 0));
+        // Invisible-but-searchable: the PDF text-showing operator is emitted regardless of fill
+        // alpha, which is what any reader's text extraction/search/copy relies on — visibility and
+        // text-extractability are independent in a PDF. NOT alpha exactly 0, though: PDFsharp 6.2.4
+        // silently drops the fill-alpha ExtGState specifically when color.A == 0 (confirmed by
+        // inspecting actual generated PDF content streams — "0 0 0 rg" with no accompanying "gs"),
+        // so exactly-transparent text rendered as fully opaque black instead of invisible. Any
+        // non-zero alpha correctly emits the ExtGState; 0.0001 renders as genuinely invisible (set
+        // via the XColor.A double property, not the byte-quantized FromArgb overload, since a byte
+        // alpha can't go below 1/255 ≈ 0.4%, which still leaves a faint visible trace).
+        XColor invisibleColor = XColor.FromArgb(0, 0, 0);
+        invisibleColor.A = 0.0001;
+        var invisibleBrush = new XSolidBrush(invisibleColor);
 
         foreach (RecognizedWord word in words)
         {
