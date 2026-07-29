@@ -139,22 +139,43 @@ public static class PdfComposer
         invisibleColor.A = 0.0001;
         var invisibleBrush = new XSolidBrush(invisibleColor);
 
+        // Arial's natural glyph widths for a given word's text almost never match the OCR'd box
+        // width — drawing at a guessed font size (rect.Height-derived) left most words clipped to
+        // only their first few characters (e.g. "Kirsty" → only "Kirs" highlighted when searched),
+        // since DrawString(..., XRect, ...) clips to the rect it's given. Fixed below by measuring
+        // each word's text at this fixed reference size, then applying a horizontal-only scale
+        // transform per word so the drawn run exactly spans rect.Width regardless of the font's
+        // actual character widths — same technique real OCR-to-PDF tools use. Vertical size only
+        // needs to roughly fill rect.Height (spec's MVP: "roughly positioned", not pixel-perfect),
+        // no similar mismatch there. "Arial", not "Segoe UI": PDFsharp's built-in
+        // WindowsPlatformFontResolver only resolves a small curated set of standard Windows fonts.
+        const double ReferenceFontSize = 100.0;
+        var referenceFont = new XFont("Arial", ReferenceFontSize, XFontStyleEx.Regular);
+
         foreach (RecognizedWord word in words)
         {
             XRect rect = MapWordToPageRect(word, layout, pixelWidth, pixelHeight);
-            if (rect.Width <= 0 || rect.Height <= 0)
+            if (rect.Width <= 0 || rect.Height <= 0 || string.IsNullOrEmpty(word.Text))
             {
                 continue;
             }
 
-            // Sized from the word's own recognized box height — invisible text doesn't need to
-            // look right, just roughly occupy the right rect so selection/search highlights land
-            // in the correct place (spec's MVP: "roughly positioned", not pixel-perfect).
-            // "Arial", not "Segoe UI": PDFsharp's built-in WindowsPlatformFontResolver only
-            // resolves a small curated set of standard Windows fonts (Arial/Times/Courier/etc.,
-            // read straight from C:\Windows\Fonts) — Segoe UI isn't in that list.
-            var font = new XFont("Arial", rect.Height * 0.8, XFontStyleEx.Regular);
-            gfx.DrawString(word.Text, font, invisibleBrush, rect, XStringFormats.TopLeft);
+            XSize measured = gfx.MeasureString(word.Text, referenceFont);
+            if (measured.Width <= 0 || measured.Height <= 0)
+            {
+                continue;
+            }
+
+            double fontSize = ReferenceFontSize * (rect.Height / measured.Height);
+            double naturalWidth = measured.Width * (fontSize / ReferenceFontSize);
+            double scaleX = rect.Width / naturalWidth;
+
+            XGraphicsState state = gfx.Save();
+            gfx.TranslateTransform(rect.X, rect.Y);
+            gfx.ScaleTransform(scaleX, 1.0);
+            gfx.DrawString(word.Text, new XFont("Arial", fontSize, XFontStyleEx.Regular), invisibleBrush,
+                new XPoint(0, 0), XStringFormats.TopLeft);
+            gfx.Restore(state);
         }
     }
 
