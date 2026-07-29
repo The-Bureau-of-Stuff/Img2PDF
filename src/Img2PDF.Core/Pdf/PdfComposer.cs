@@ -23,7 +23,11 @@ public static class PdfComposer
     /// <summary>
     /// Builds a PDF from the given pages, in order, one page per image: page size/margins/
     /// orientation/quality/greyscale per <paramref name="options"/>, fit-and-centre (never crop).
-    /// JPEG passthrough (no re-encode) applies only at Original quality with greyscale off.
+    /// At Original quality: a JPEG source with greyscale off embeds untouched (true passthrough,
+    /// byte-identical); everything else at Original quality (non-JPEG sources, or JPEG+greyscale)
+    /// re-encodes losslessly as PNG at native resolution — no quality loss, just not literally the
+    /// original bytes, since PDF has no filter that maps to non-JPEG source formats directly. Only
+    /// the High/Medium/Small quality tiers resample and recompress lossily as JPEG.
     /// </summary>
     public static async Task ComposeAsync(
         IReadOnlyList<PdfPageSource> pages,
@@ -74,13 +78,23 @@ public static class PdfComposer
 
             using XGraphics gfx = XGraphics.FromPdfPage(page);
 
-            bool passthrough = options.Quality == QualityOption.Original
+            bool jpegPassthrough = options.Quality == QualityOption.Original
                 && !options.Greyscale
                 && JpegExtensions.Contains(Path.GetExtension(source.ImagePath), StringComparer.OrdinalIgnoreCase);
 
-            if (passthrough)
+            if (jpegPassthrough)
             {
                 using XImage image = XImage.FromFile(source.ImagePath);
+                DrawRotated(gfx, image, layout);
+            }
+            else if (options.Quality == QualityOption.Original)
+            {
+                // Original quality always means "no quality loss" now, not just for JPEG — covers
+                // every non-JPEG source, plus JPEG+Greyscale (which can't skip re-encoding either,
+                // since desaturating has to touch the pixels regardless of source format).
+                byte[] pngBytes = await ImageRenderer.RenderLosslessAsync(source.ImagePath, options.Greyscale);
+                using var imageStream = new MemoryStream(pngBytes);
+                using XImage image = XImage.FromStream(imageStream);
                 DrawRotated(gfx, image, layout);
             }
             else
