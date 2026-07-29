@@ -5,7 +5,12 @@
     xmlns:vm="using:Img2PDF.App.ViewModels"
     xmlns:converters="using:Img2PDF.App.Converters">
 
-    <Grid x:Name="RootGrid" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+    <Grid
+        x:Name="RootGrid"
+        Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
+        AllowDrop="True"
+        DragOver="RootGrid_DragOver"
+        Drop="RootGrid_Drop">
         <Grid.Resources>
             <converters:BoolToVisibilityConverter x:Key="BoolToVisibility"/>
             <converters:PageCountConverter x:Key="PageCount"/>
@@ -58,6 +63,20 @@
                         Click="UndoButton_Click"
                         ToolTipService.ToolTip="Undo the last change"
                         AutomationProperties.Name="Undo"/>
+                    <SplitButton
+                        Content="Sort"
+                        ToolTipService.ToolTip="Change page order"
+                        AutomationProperties.Name="Sort">
+                        <SplitButton.Flyout>
+                            <MenuFlyout Placement="Bottom">
+                                <MenuFlyoutItem Text="Name (natural)" Click="SortByName_Click"/>
+                                <MenuFlyoutItem Text="Date taken" Click="SortByDateTaken_Click"/>
+                                <MenuFlyoutItem Text="Date modified" Click="SortByDateModified_Click"/>
+                                <MenuFlyoutSeparator/>
+                                <MenuFlyoutItem Text="Reverse current" Click="ReverseOrder_Click"/>
+                            </MenuFlyout>
+                        </SplitButton.Flyout>
+                    </SplitButton>
                 </StackPanel>
 
                 <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
@@ -65,6 +84,13 @@
                         VerticalAlignment="Center"
                         Text="{Binding Pages.Count, Converter={StaticResource PageCount}}"/>
                     <Button Content="Save" Style="{StaticResource AccentButtonStyle}" Click="SaveButton_Click"/>
+                    <Button
+                        Style="{StaticResource IconButtonStyle}"
+                        Click="AboutButton_Click"
+                        ToolTipService.ToolTip="About Scanstack"
+                        AutomationProperties.Name="About Scanstack">
+                        <FontIcon Glyph="&#xE946;" FontSize="16"/>
+                    </Button>
                 </StackPanel>
             </Grid>
 
@@ -118,6 +144,23 @@
                 Visibility="Collapsed">
                 <ProgressBar x:Name="SaveProgressBar" Width="300" Minimum="0"/>
                 <Button x:Name="CancelSaveButton" Content="Cancel" Click="CancelSaveButton_Click"/>
+            </StackPanel>
+
+            <StackPanel
+                x:Name="EmptyStatePanel"
+                Grid.Row="3"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Spacing="12"
+                Visibility="{Binding ShowEmptyState, Converter={StaticResource BoolToVisibility}}">
+                <FontIcon Glyph="&#xE8B9;" FontSize="48" Foreground="{ThemeResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center"/>
+                <TextBlock Text="Drop images here, or" Foreground="{ThemeResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center"/>
+                <Button
+                    Content="Choose images…"
+                    Click="ChooseImagesButton_Click"
+                    Style="{StaticResource AccentButtonStyle}"
+                    HorizontalAlignment="Center"
+                    AutomationProperties.Name="Choose images"/>
             </StackPanel>
 
             <GridView
@@ -397,5 +440,54 @@
                 HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,24"
                 Foreground="White" FontSize="14"/>
         </Grid>
+
+        <!-- MIT requires the copyright/permission notice be included with distributed copies of
+             the software; the three packages below all ship compiled into this app. Attribution
+             text is fixed (only AppVersionText is data-bound), so it's plain literal content
+             rather than anything sourced from a converter or resource. -->
+        <ContentDialog
+            x:Name="AboutDialog"
+            Title="About Scanstack"
+            CloseButtonText="Close"
+            DefaultButton="Close">
+            <ScrollViewer MaxHeight="400" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Spacing="12" Width="420">
+                    <TextBlock TextWrapping="Wrap">
+                        <Run x:Name="AppVersionText"/>
+                        <LineBreak/>
+                        Combine images into a single PDF from File Explorer.
+                    </TextBlock>
+
+                    <TextBlock Text="Third-party software" FontWeight="SemiBold"/>
+                    <TextBlock TextWrapping="Wrap" FontSize="12">
+                        PDFsharp — Copyright (c) 2001-2026 empira Software GmbH, Troisdorf (Cologne Area), Germany
+                        <LineBreak/>
+                        CommunityToolkit.Mvvm — Copyright © .NET Foundation and Contributors
+                        <LineBreak/>
+                        Microsoft.Windows.ImplementationLibrary (WIL) — Copyright (c) Microsoft Corporation. All rights reserved.
+                    </TextBlock>
+
+                    <TextBlock Text="Each is licensed under the MIT License:" FontSize="12"/>
+                    <TextBlock TextWrapping="Wrap" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}">
+                        Permission is hereby granted, free of charge, to any person obtaining a copy of this
+                        software and associated documentation files (the "Software"), to deal in the Software
+                        without restriction, including without limitation the rights to use, copy, modify,
+                        merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
+                        permit persons to whom the Software is furnished to do so, subject to the following
+                        conditions:
+                        <LineBreak/><LineBreak/>
+                        The above copyright notice and this permission notice shall be included in all
+                        copies or substantial portions of the Software.
+                        <LineBreak/><LineBreak/>
+                        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+                        INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+                        PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+                        HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+                        CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
+                        OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+                    </TextBlock>
+                </StackPanel>
+            </ScrollViewer>
+        </ContentDialog>
     </Grid>
 </Window>

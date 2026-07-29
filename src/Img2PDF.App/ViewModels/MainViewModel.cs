@@ -58,6 +58,12 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private string? _skippedFilesMessage;
 
+    // Empty state (spec §4.2 Startup) — true only until either constructor is given something to
+    // load. Set false immediately (before any async load starts) rather than waiting for Pages to
+    // gain items, so there's no flash of empty-state ahead of the "Loading…" tile placeholders.
+    [ObservableProperty]
+    private bool _showEmptyState = true;
+
     // Save options (spec §4.2) — defaults produce a clean, correctly-oriented A4 document with
     // zero interaction. Bound from MainWindow's options expander.
     [ObservableProperty]
@@ -75,16 +81,45 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private bool _greyscale;
 
+    // Spec §4.2 "Remember the last-used choice" — set once at startup from AppSettings by
+    // MainWindow before any load call, and re-applied after the initial (always-natural) load
+    // completes. See LoadPagesAsync.
+    [ObservableProperty]
+    private SortOrder _currentSortOrder = SortOrder.NameNatural;
+
     public string? FolderPath { get; private set; }
+
+    public static bool IsSupported(string path) =>
+        SupportedExtensions.Contains(Path.GetExtension(path), StringComparer.OrdinalIgnoreCase);
+
+    public static IReadOnlyList<string> SupportedFileTypeFilters => SupportedExtensions;
 
     public PdfOptions CurrentOptions => new(PageSize, Margins, Orientation, Quality, Greyscale);
 
-    public Task LoadFolderAsync(string folderPath)
+    public async Task LoadFolderAsync(string folderPath)
     {
         FolderPath = folderPath;
-        IEnumerable<string> paths = Directory.EnumerateFiles(folderPath)
-            .Where(p => SupportedExtensions.Contains(Path.GetExtension(p), StringComparer.OrdinalIgnoreCase));
-        return LoadPagesAsync(paths);
+        ShowEmptyState = false;
+
+        // Directory.EnumerateFiles validates the path eagerly (throws synchronously at the call
+        // site, not lazily during enumeration) — catch it here rather than letting it escape the
+        // fire-and-forget call in MainWindow's constructor, which previously crashed the app
+        // natively (0xc000027b) instead of showing ErrorMessage like every other load failure.
+        List<string> paths;
+        try
+        {
+            paths = Directory.EnumerateFiles(folderPath)
+                .Where(p => SupportedExtensions.Contains(Path.GetExtension(p), StringComparer.OrdinalIgnoreCase))
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+            ShowEmptyState = true;
+            return;
+        }
+
+        await LoadPagesAsync(paths);
     }
 
     // Explicit file list from the shell extension's temp-file handshake (spec §4.1). filePaths is
@@ -94,6 +129,7 @@ public partial class MainViewModel : ObservableObject
     public Task LoadFilesAsync(IReadOnlyList<string> filePaths, IReadOnlyList<string> skippedNames)
     {
         FolderPath = filePaths.Count > 0 ? Path.GetDirectoryName(filePaths[0]) : null;
+        ShowEmptyState = filePaths.Count == 0;
 
         HasSkippedFiles = skippedNames.Count > 0;
         SkippedFilesMessage = HasSkippedFiles
@@ -121,6 +157,14 @@ public partial class MainViewModel : ObservableObject
             _undoStack.Clear();
 
             await Task.WhenAll(Pages.Select(LoadPageAsync));
+
+            // Initial order is always natural sort per spec §4.2; re-apply a remembered non-default
+            // choice now that per-page metadata (dates) exists. Skipped for NameNatural to avoid a
+            // redundant no-op resort (and an unnecessary undo-stack entry) on every load.
+            if (CurrentSortOrder != SortOrder.NameNatural)
+            {
+                ApplySort(CurrentSortOrder);
+            }
         }
         catch (Exception ex)
         {
@@ -130,6 +174,50 @@ public partial class MainViewModel : ObservableObject
         {
             IsLoading = false;
         }
+    }
+
+    public void ApplySort(SortOrder order)
+    {
+        IOrderedEnumerable<PageItem> ordered = order switch
+        {
+            SortOrder.DateTaken => Pages.OrderBy(p => p.DateTaken ?? p.FileModifiedUtc),
+            SortOrder.DateModified => Pages.OrderBy(p => p.FileModifiedUtc),
+            _ => Pages.OrderBy(p => p.FileName, NaturalSortComparer.Instance),
+        };
+
+        CurrentSortOrder = order;
+        ApplyOrder(ordered.ToList());
+    }
+
+    public void ReverseOrder() => ApplyOrder(Pages.Reverse().ToList());
+
+    // Shared by ApplySort/ReverseOrder — same pattern as RemoveSelected/MoveSelected: clear and
+    // re-add under _suppressCollectionTracking so the whole reorder is one undo step, not one
+    // per moved item.
+    private void ApplyOrder(List<PageItem> newOrder)
+    {
+        List<PageItem> previous = Pages.ToList();
+
+        _suppressCollectionTracking = true;
+        Pages.Clear();
+        foreach (PageItem item in newOrder)
+        {
+            Pages.Add(item);
+        }
+        _suppressCollectionTracking = false;
+        RenumberPages();
+
+        _undoStack.Push(() =>
+        {
+            _suppressCollectionTracking = true;
+            Pages.Clear();
+            foreach (PageItem item in previous)
+            {
+                Pages.Add(item);
+            }
+            _suppressCollectionTracking = false;
+            RenumberPages();
+        });
     }
 
     public void RotateSelected(IReadOnlyList<PageItem> selected, bool clockwise)

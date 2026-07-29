@@ -10,6 +10,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
+using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage;
 using Windows.Storage.Pickers;
 using Windows.Storage.Streams;
@@ -64,6 +65,15 @@ public sealed partial class MainWindow : Window
         // of what has focus.
         RootGrid.AddHandler(UIElement.KeyDownEvent, new KeyEventHandler(RootGrid_KeyDown), handledEventsToo: true);
 
+        AppSettingsData settings = AppSettings.Load();
+        ZoomSlider.Value = settings.ZoomValue;
+        viewModel.CurrentSortOrder = settings.LastSortOrder;
+
+        // Save-on-close rather than save-on-every-drag-tick: a continuous Slider.ValueChanged
+        // during a drag would otherwise hammer disk I/O for no benefit — the setting only needs
+        // to survive across sessions, not live-sync mid-drag.
+        Closed += (_, _) => AppSettings.Save(new AppSettingsData(ZoomSlider.Value, viewModel.CurrentSortOrder));
+
         return viewModel;
     }
 
@@ -112,6 +122,20 @@ public sealed partial class MainWindow : Window
     }
 
     private void UndoButton_Click(object sender, RoutedEventArgs e) => ViewModel.Undo();
+
+    private void SortByName_Click(object sender, RoutedEventArgs e) => ApplySortAndPersist(SortOrder.NameNatural);
+
+    private void SortByDateTaken_Click(object sender, RoutedEventArgs e) => ApplySortAndPersist(SortOrder.DateTaken);
+
+    private void SortByDateModified_Click(object sender, RoutedEventArgs e) => ApplySortAndPersist(SortOrder.DateModified);
+
+    private void ReverseOrder_Click(object sender, RoutedEventArgs e) => ViewModel.ReverseOrder();
+
+    private void ApplySortAndPersist(SortOrder order)
+    {
+        ViewModel.ApplySort(order);
+        AppSettings.Save(new AppSettingsData(ZoomSlider.Value, order));
+    }
 
     private void RotateButton_Click(object sender, RoutedEventArgs e)
     {
@@ -283,6 +307,77 @@ public sealed partial class MainWindow : Window
         {
             ViewModel.Quality = (QualityOption)QualityCombo.SelectedIndex;
         }
+    }
+
+    private async void ChooseImagesButton_Click(object sender, RoutedEventArgs e)
+    {
+        var picker = new FileOpenPicker { ViewMode = PickerViewMode.Thumbnail };
+        foreach (string extension in MainViewModel.SupportedFileTypeFilters)
+        {
+            picker.FileTypeFilter.Add(extension);
+        }
+
+        WinRT.Interop.InitializeWithWindow.Initialize(picker, WinRT.Interop.WindowNative.GetWindowHandle(this));
+
+        IReadOnlyList<StorageFile> files = await picker.PickMultipleFilesAsync();
+        if (files.Count > 0)
+        {
+            _ = ViewModel.LoadFilesAsync(files.Select(f => f.Path).ToList(), Array.Empty<string>());
+        }
+    }
+
+    // Spec §4.2 Startup — "accept drag-and-drop of files onto the window." Scoped to the empty
+    // state deliberately: LoadFilesAsync -> LoadPagesAsync always clears the undo stack, so
+    // reusing it to append onto an already-loaded set would silently wipe undo history. Adding
+    // more images to an in-progress session would need its own append path, not this one.
+    private void RootGrid_DragOver(object sender, DragEventArgs e)
+    {
+        if (ViewModel.Pages.Count == 0 && e.DataView.Contains(StandardDataFormats.StorageItems))
+        {
+            e.AcceptedOperation = DataPackageOperation.Copy;
+        }
+    }
+
+    private async void RootGrid_Drop(object sender, DragEventArgs e)
+    {
+        if (ViewModel.Pages.Count > 0 || !e.DataView.Contains(StandardDataFormats.StorageItems))
+        {
+            return;
+        }
+
+        IReadOnlyList<IStorageItem> items = await e.DataView.GetStorageItemsAsync();
+        List<string> supported = new();
+        List<string> unsupported = new();
+        foreach (IStorageItem item in items)
+        {
+            if (item is not StorageFile file)
+            {
+                continue;
+            }
+
+            if (MainViewModel.IsSupported(file.Path))
+            {
+                supported.Add(file.Path);
+            }
+            else
+            {
+                unsupported.Add(file.Name);
+            }
+        }
+
+        if (supported.Count > 0 || unsupported.Count > 0)
+        {
+            _ = ViewModel.LoadFilesAsync(supported, unsupported);
+        }
+    }
+
+    private async void AboutButton_Click(object sender, RoutedEventArgs e)
+    {
+        Version? version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+        AppVersionText.Text = version is not null ? $"Scanstack {version.ToString(3)}" : "Scanstack";
+
+        AboutDialog.XamlRoot = RootGrid.XamlRoot;
+        await AboutDialog.ShowAsync();
     }
 
     private async void SaveButton_Click(object sender, RoutedEventArgs e) => await SaveAsync();

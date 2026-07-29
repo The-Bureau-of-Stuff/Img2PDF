@@ -5,8 +5,8 @@ using Windows.Storage.Streams;
 
 namespace Img2PDF.Core.Imaging;
 
-/// <summary>Pixel size and raw EXIF orientation (1-8, EXIF standard) for a source image.</summary>
-public sealed record ImageInfo(int PixelWidth, int PixelHeight, int ExifOrientation);
+/// <summary>Pixel size, raw EXIF orientation (1-8, EXIF standard), and EXIF capture date (if present) for a source image.</summary>
+public sealed record ImageInfo(int PixelWidth, int PixelHeight, int ExifOrientation, DateTimeOffset? DateTaken);
 
 public static class ImageInspector
 {
@@ -21,13 +21,20 @@ public static class ImageInspector
         BitmapDecoder decoder = await BitmapDecoder.CreateAsync(stream);
 
         int orientation = 1;
-        var props = await decoder.BitmapProperties.GetPropertiesAsync(new[] { "System.Photo.Orientation" });
-        if (props.TryGetValue("System.Photo.Orientation", out BitmapTypedValue? property) && property.Value is ushort raw)
+        DateTimeOffset? dateTaken = null;
+        var props = await decoder.BitmapProperties.GetPropertiesAsync(
+            new[] { "System.Photo.Orientation", "System.Photo.DateTaken" });
+        if (props.TryGetValue("System.Photo.Orientation", out BitmapTypedValue? orientationProperty) && orientationProperty.Value is ushort raw)
         {
             orientation = raw;
         }
 
-        return new ImageInfo((int)decoder.PixelWidth, (int)decoder.PixelHeight, orientation);
+        if (props.TryGetValue("System.Photo.DateTaken", out BitmapTypedValue? dateTakenProperty) && dateTakenProperty.Value is DateTimeOffset taken)
+        {
+            dateTaken = taken;
+        }
+
+        return new ImageInfo((int)decoder.PixelWidth, (int)decoder.PixelHeight, orientation, dateTaken);
     }
 
     /// <summary>

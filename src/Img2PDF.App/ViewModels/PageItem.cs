@@ -17,6 +17,7 @@ public partial class PageItem : ObservableObject
     {
         SourcePath = sourcePath;
         FileName = Path.GetFileName(sourcePath);
+        FileModifiedUtc = File.GetLastWriteTimeUtc(sourcePath);
     }
 
     public Guid Id { get; } = Guid.NewGuid();
@@ -24,6 +25,13 @@ public partial class PageItem : ObservableObject
     public string SourcePath { get; }
 
     public string FileName { get; }
+
+    // Cheap synchronous file-system stat, available immediately at construction — used as the
+    // "Date modified" sort key and as the fallback for "Date taken" while EXIF hasn't been read
+    // yet (ApplyImageInfo runs later, asynchronously).
+    public DateTimeOffset FileModifiedUtc { get; }
+
+    public DateTimeOffset? DateTaken { get; private set; }
 
     public int PixelWidth { get; private set; }
 
@@ -65,6 +73,7 @@ public partial class PageItem : ObservableObject
         PixelWidth = info.PixelWidth;
         PixelHeight = info.PixelHeight;
         ExifOrientation = info.ExifOrientation;
+        DateTaken = info.DateTaken;
         RotationDegrees = PageLayout.NormalizeExifRotation(info.ExifOrientation);
     }
 
