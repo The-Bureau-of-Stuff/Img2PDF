@@ -51,16 +51,18 @@ public static class PdfComposer
 
         // Created once, not per-page — if no OCR-capable language pack is installed it'll be null
         // every time, so there's no point retrying per page. Spec's soft-fail path: Searchable
-        // just silently produces no text layer rather than blocking the save.
-        OcrEngine? ocrEngine = options.Searchable ? PageOcr.TryCreateEngine() : null;
+        // and Deskew both just silently do nothing extra rather than blocking the save. Both
+        // features share one OCR call per page (below) rather than running the engine twice.
+        OcrEngine? ocrEngine = (options.Searchable || options.Deskew) ? PageOcr.TryCreateEngine() : null;
 
-        if (ocrEngine is not null)
+        if (ocrEngine is not null && options.Searchable)
         {
             // PDFsharp 6's "Core" build (no GDI+/WPF) has no font resolver wired up by default —
             // XFont throws "No appropriate font found" for any family name until one is set. This
             // is the only place in the whole app that constructs an XFont, so it's the first thing
             // to ever hit it. PDFsharp ships its own WindowsPlatformFontResolver (reads straight
             // from C:\Windows\Fonts for a small curated set of standard fonts) but it's opt-in.
+            // Deskew alone never draws text, so it never needs this.
             GlobalFontSettings.UseWindowsFontsUnderWindows = true;
         }
 
@@ -72,11 +74,29 @@ public static class PdfComposer
             ImageInfo info = await ImageInspector.InspectAsync(source.ImagePath);
             PageLayoutResult layout = PageLayout.Compute(info.PixelWidth, info.PixelHeight, source.RotationDegrees, options);
 
+            // Run OCR once per page (if either feature needs it) before drawing anything — Deskew
+            // needs the detected angle in hand before the image itself is drawn, since it's applied
+            // as part of the page's rotation transform, not a post-process.
+            OcrPageResult? ocrResult = ocrEngine is not null
+                ? await TryRecognizeAsync(ocrEngine, source)
+                : null;
+
+            // Negated: OcrResult.TextAngleDegrees is the clockwise skew of the text (verified
+            // against Microsoft's docs), and PDFsharp's RotateTransform is clockwise-positive —
+            // correcting a clockwise skew means rotating the page content the other way.
+            double extraRotationDegrees = (options.Deskew && ocrResult?.TextAngleDegrees is { } angle) ? -angle : 0;
+
             PdfPage page = document.AddPage();
             page.Width = XUnit.FromPoint(layout.PageWidthPt);
             page.Height = XUnit.FromPoint(layout.PageHeightPt);
 
             using XGraphics gfx = XGraphics.FromPdfPage(page);
+
+            // Wraps everything drawn below in one extra rotation + compensating scale, centred on
+            // the image's own rect — applied identically to the (already-rotated) image and the
+            // (already-positioned) OCR text layer, so the two stay aligned with each other. See
+            // BeginDeskewTransform for why this composes correctly with DrawRotated's own transform.
+            XGraphicsState deskewState = BeginDeskewTransform(gfx, layout, extraRotationDegrees);
 
             bool jpegPassthrough = options.Quality == QualityOption.Original
                 && !options.Greyscale
@@ -105,10 +125,12 @@ public static class PdfComposer
                 DrawRotated(gfx, image, layout);
             }
 
-            if (ocrEngine is not null)
+            if (options.Searchable && ocrResult is { Words.Count: > 0 })
             {
-                await TryDrawOcrTextLayerAsync(gfx, ocrEngine, source, layout, info.PixelWidth, info.PixelHeight);
+                DrawOcrTextLayer(gfx, ocrResult.Words, layout, info.PixelWidth, info.PixelHeight);
             }
+
+            gfx.Restore(deskewState);
 
             progress?.Report(i + 1);
         }
@@ -117,29 +139,26 @@ public static class PdfComposer
     }
 
     // Isolated failure domain per spec: a page that can't be OCR'd (unsupported format, decode
-    // failure, oversized image) just gets no text layer — must never affect the image already
-    // drawn above it or abort the rest of the document.
-    private static async Task TryDrawOcrTextLayerAsync(
-        XGraphics gfx, OcrEngine engine, PdfPageSource source, PageLayoutResult layout, int pixelWidth, int pixelHeight)
+    // failure, oversized image) just gets no text layer and no deskew — must never affect the
+    // image already drawn above it or abort the rest of the document.
+    private static async Task<OcrPageResult?> TryRecognizeAsync(OcrEngine engine, PdfPageSource source)
     {
-        IReadOnlyList<RecognizedWord> words;
         try
         {
             // PageOcr rotates the pixels to source.RotationDegrees before recognizing, so words
-            // come back already in the page's final display orientation — no separate rotation
-            // transform needed here, just a scale and an absolute offset (below).
-            words = await PageOcr.RecognizeAsync(engine, source.ImagePath, source.RotationDegrees);
+            // come back already in the page's final (pre-deskew) display orientation — no separate
+            // rotation transform needed for them beyond the shared deskew wrap applied by the caller.
+            return await PageOcr.RecognizeAsync(engine, source.ImagePath, source.RotationDegrees);
         }
         catch (Exception)
         {
-            return;
+            return null;
         }
+    }
 
-        if (words.Count == 0)
-        {
-            return;
-        }
-
+    private static void DrawOcrTextLayer(
+        XGraphics gfx, IReadOnlyList<RecognizedWord> words, PageLayoutResult layout, int pixelWidth, int pixelHeight)
+    {
         // Invisible-but-searchable: the PDF text-showing operator is emitted regardless of fill
         // alpha, which is what any reader's text extraction/search/copy relies on — visibility and
         // text-extractability are independent in a PDF. NOT alpha exactly 0, though: PDFsharp 6.2.4
@@ -247,5 +266,55 @@ public static class PdfComposer
         gfx.RotateTransform(layout.RotationDegrees);
         gfx.DrawImage(image, -drawWidth / 2.0, -drawHeight / 2.0, drawWidth, drawHeight);
         gfx.Restore(state);
+    }
+
+    /// <summary>
+    /// Opens a graphics state that applies the deskew correction (if any) around the image's own
+    /// centre, on top of whatever gets drawn afterwards in absolute page coordinates — both
+    /// <see cref="DrawRotated"/> (which applies its own rotation internally) and the OCR text
+    /// layer (drawn at absolute, already-computed rect positions). Caller must
+    /// <c>gfx.Restore(returned state)</c> once both are drawn.
+    /// Composes correctly with DrawRotated's own centre-rotation because a uniform scale commutes
+    /// with rotation: translate(c)·rotate(extra)·scale(s)·translate(-c) applied to content that
+    /// itself does translate(c)·rotate(base)·[local draw] works out to
+    /// translate(c)·scale(s)·rotate(base+extra)·[local draw] — i.e. exactly the single combined
+    /// rotation the deskew math (<see cref="ComputeDeskewCompensatingScale"/>) was derived for,
+    /// without DrawRotated or the OCR word positions needing to know about the extra angle at all.
+    /// </summary>
+    private static XGraphicsState BeginDeskewTransform(XGraphics gfx, PageLayoutResult layout, double extraRotationDegrees)
+    {
+        XGraphicsState state = gfx.Save();
+
+        if (extraRotationDegrees != 0)
+        {
+            double centreX = layout.ImageX + layout.ImageWidthPt / 2.0;
+            double centreY = layout.ImageY + layout.ImageHeightPt / 2.0;
+            double scale = ComputeDeskewCompensatingScale(layout.ImageWidthPt, layout.ImageHeightPt, extraRotationDegrees);
+
+            gfx.TranslateTransform(centreX, centreY);
+            gfx.RotateTransform(extraRotationDegrees);
+            gfx.ScaleTransform(scale, scale);
+            gfx.TranslateTransform(-centreX, -centreY);
+        }
+
+        return state;
+    }
+
+    /// <summary>
+    /// Rotating a <paramref name="width"/> x <paramref name="height"/> rect by an additional angle
+    /// grows its bounding box beyond the rect itself. Returns the uniform scale factor (&lt;= 1)
+    /// that shrinks the rotated content back down so its bounding box fits within the original
+    /// rect — i.e. so the deskew correction never overhangs the page's already-fitted image area.
+    /// </summary>
+    public static double ComputeDeskewCompensatingScale(double width, double height, double extraRotationDegrees)
+    {
+        double radians = extraRotationDegrees * Math.PI / 180.0;
+        double cos = Math.Abs(Math.Cos(radians));
+        double sin = Math.Abs(Math.Sin(radians));
+
+        double boundingWidth = width * cos + height * sin;
+        double boundingHeight = width * sin + height * cos;
+
+        return Math.Min(width / boundingWidth, height / boundingHeight);
     }
 }

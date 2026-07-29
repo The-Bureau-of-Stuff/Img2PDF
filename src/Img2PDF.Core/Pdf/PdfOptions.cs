@@ -34,4 +34,5 @@ public sealed record PdfOptions(
     OrientationOption Orientation = OrientationOption.Auto,
     QualityOption Quality = QualityOption.Original,
     bool Greyscale = false,
-    bool Searchable = false);
+    bool Searchable = false,
+    bool Deskew = false);

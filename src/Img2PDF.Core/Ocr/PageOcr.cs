@@ -8,6 +8,10 @@ namespace Img2PDF.Core.Ocr;
 /// <summary>One recognized word, in the page's final (post-rotation) pixel space, top-left origin.</summary>
 public sealed record RecognizedWord(string Text, double X, double Y, double Width, double Height);
 
+/// <param name="TextAngleDegrees">OcrResult.TextAngle passed through unchanged: clockwise degrees,
+/// null if undetectable. Used by the Deskew feature; ignored when Deskew is off.</param>
+public sealed record OcrPageResult(IReadOnlyList<RecognizedWord> Words, double? TextAngleDegrees);
+
 public static class PageOcr
 {
     /// <summary>Null if no OCR-capable language pack is installed for the user's profile languages — the spec's soft-fail path, not an error.</summary>
@@ -16,9 +20,10 @@ public static class PageOcr
     /// <param name="rotationDegrees">The same final display rotation (EXIF + user rotation already
     /// combined) PageLayout/DrawRotated use — applied to the pixels before OCR runs, not just at
     /// draw time, so the engine reads upright text instead of sideways/upside-down. This is a plain
-    /// 90°-multiple correction, unlike deskew (out of MVP scope): there's no reason not to apply it,
-    /// and skipping it measurably hurt recognition accuracy on real rotated scans in testing.</param>
-    public static async Task<IReadOnlyList<RecognizedWord>> RecognizeAsync(OcrEngine engine, string imagePath, int rotationDegrees)
+    /// 90°-multiple correction, separate from the arbitrary-angle deskew correction reported via
+    /// TextAngleDegrees: there's no reason not to apply it, and skipping it measurably hurt
+    /// recognition accuracy on real rotated scans in testing.</param>
+    public static async Task<OcrPageResult> RecognizeAsync(OcrEngine engine, string imagePath, int rotationDegrees)
     {
         StorageFile file = await StorageFile.GetFileFromPathAsync(imagePath);
         using IRandomAccessStream stream = await file.OpenAsync(FileAccessMode.Read);
@@ -27,7 +32,7 @@ public static class PageOcr
         if (Math.Max(decoder.PixelWidth, decoder.PixelHeight) > OcrEngine.MaxImageDimension)
         {
             // Soft-fail per spec — an oversized page just gets no text layer, not a blocked save.
-            return Array.Empty<RecognizedWord>();
+            return new OcrPageResult(Array.Empty<RecognizedWord>(), null);
         }
 
         var transform = new BitmapTransform { Rotation = ToBitmapRotation(rotationDegrees) };
@@ -41,13 +46,12 @@ public static class PageOcr
 
         OcrResult result = await engine.RecognizeAsync(bitmap);
 
-        // OcrResult.TextAngle (detected skew, independent of the 90°-multiple rotation above) is
-        // deliberately ignored — correcting for it is deskew work, out of MVP scope (spec §8 item
-        // 2). A skewed scan still gets a text layer, just slightly misplaced.
-        return result.Lines
+        List<RecognizedWord> words = result.Lines
             .SelectMany(line => line.Words)
             .Select(w => new RecognizedWord(w.Text, w.BoundingRect.X, w.BoundingRect.Y, w.BoundingRect.Width, w.BoundingRect.Height))
             .ToList();
+
+        return new OcrPageResult(words, result.TextAngle);
     }
 
     private static BitmapRotation ToBitmapRotation(int rotationDegrees) => rotationDegrees switch

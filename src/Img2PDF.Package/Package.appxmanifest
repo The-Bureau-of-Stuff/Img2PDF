@@ -17,7 +17,7 @@
   <Identity
     Name="Img2PDF"
     Publisher="CN=Img2PDF Dev"
-    Version="0.5.12.0" />
+    Version="0.5.13.0" />
 
   <Properties>
     <!-- Must match a name reserved in Partner Center character-for-character, or

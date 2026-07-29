@@ -5,6 +5,7 @@ using Img2PDF.Core.Pdf;
 string? listPath = null;
 string? outputPath = null;
 bool searchable = false;
+bool deskew = false;
 
 for (int i = 0; i < args.Length; i++)
 {
@@ -19,12 +20,15 @@ for (int i = 0; i < args.Length; i++)
         case "--searchable":
             searchable = true;
             break;
+        case "--deskew":
+            deskew = true;
+            break;
     }
 }
 
 if (listPath is null || outputPath is null)
 {
-    Console.Error.WriteLine("Usage: Img2PDF.Cli --list <path-to-list-file> --output <output.pdf> [--searchable]");
+    Console.Error.WriteLine("Usage: Img2PDF.Cli --list <path-to-list-file> --output <output.pdf> [--searchable] [--deskew]");
     Console.Error.WriteLine();
     Console.Error.WriteLine("The list file is UTF-8, one absolute image path per line (same shape the");
     Console.Error.WriteLine("shell extension's temp-file handshake will use in a later milestone).");
@@ -57,7 +61,7 @@ foreach (string imagePath in imagePaths)
     pageSources.Add(new PdfPageSource(imagePath, rotation));
 }
 
-await PdfComposer.ComposeAsync(pageSources, outputPath, new PdfOptions(Searchable: searchable));
+await PdfComposer.ComposeAsync(pageSources, outputPath, new PdfOptions(Searchable: searchable, Deskew: deskew));
 
 long inputBytes = imagePaths.Sum(p => new FileInfo(p).Length);
 long outputBytes = new FileInfo(outputPath).Length;

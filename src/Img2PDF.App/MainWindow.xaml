@@ -135,6 +135,10 @@
                             Content="Make searchable (OCR)"
                             IsChecked="{Binding Searchable, Mode=TwoWay}"
                             ToolTipService.ToolTip="Adds an invisible, searchable text layer. Works best on clean printed text; increases save time."/>
+                        <CheckBox
+                            Content="Auto-deskew"
+                            IsChecked="{Binding Deskew, Mode=TwoWay}"
+                            ToolTipService.ToolTip="Straightens pages scanned in slightly crooked. Only helps pages with real printed text, and adds the same OCR cost as Make searchable."/>
                     </StackPanel>
                 </StackPanel>
             </Expander>
