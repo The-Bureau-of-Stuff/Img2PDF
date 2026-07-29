@@ -1,7 +1,10 @@
 using Img2PDF.Core.Imaging;
 using Img2PDF.Core.Layout;
+using Img2PDF.Core.Ocr;
 using PdfSharp.Drawing;
+using PdfSharp.Fonts;
 using PdfSharp.Pdf;
+using Windows.Media.Ocr;
 
 namespace Img2PDF.Core.Pdf;
 
@@ -42,6 +45,21 @@ public static class PdfComposer
         // raw PDF dictionary entry instead.
         document.Info.Elements.SetString("/Producer", "Scanstack");
 
+        // Created once, not per-page — if no OCR-capable language pack is installed it'll be null
+        // every time, so there's no point retrying per page. Spec's soft-fail path: Searchable
+        // just silently produces no text layer rather than blocking the save.
+        OcrEngine? ocrEngine = options.Searchable ? PageOcr.TryCreateEngine() : null;
+
+        if (ocrEngine is not null)
+        {
+            // PDFsharp 6's "Core" build (no GDI+/WPF) has no font resolver wired up by default —
+            // XFont throws "No appropriate font found" for any family name until one is set. This
+            // is the only place in the whole app that constructs an XFont, so it's the first thing
+            // to ever hit it. PDFsharp ships its own WindowsPlatformFontResolver (reads straight
+            // from C:\Windows\Fonts for a small curated set of standard fonts) but it's opt-in.
+            GlobalFontSettings.UseWindowsFontsUnderWindows = true;
+        }
+
         for (int i = 0; i < pages.Count; i++)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -73,10 +91,82 @@ public static class PdfComposer
                 DrawRotated(gfx, image, layout);
             }
 
+            if (ocrEngine is not null)
+            {
+                await TryDrawOcrTextLayerAsync(gfx, ocrEngine, source, layout, info.PixelWidth, info.PixelHeight);
+            }
+
             progress?.Report(i + 1);
         }
 
         document.Save(outputPath);
+    }
+
+    // Isolated failure domain per spec: a page that can't be OCR'd (unsupported format, decode
+    // failure, oversized image) just gets no text layer — must never affect the image already
+    // drawn above it or abort the rest of the document.
+    private static async Task TryDrawOcrTextLayerAsync(
+        XGraphics gfx, OcrEngine engine, PdfPageSource source, PageLayoutResult layout, int pixelWidth, int pixelHeight)
+    {
+        IReadOnlyList<RecognizedWord> words;
+        try
+        {
+            // PageOcr rotates the pixels to source.RotationDegrees before recognizing, so words
+            // come back already in the page's final display orientation — no separate rotation
+            // transform needed here, just a scale and an absolute offset (below).
+            words = await PageOcr.RecognizeAsync(engine, source.ImagePath, source.RotationDegrees);
+        }
+        catch (Exception)
+        {
+            return;
+        }
+
+        if (words.Count == 0)
+        {
+            return;
+        }
+
+        // Invisible-but-searchable: alpha-0 fill still emits the PDF text-showing operator (PDFsharp's
+        // renderer has no brush-alpha short-circuit), which is what any reader's text extraction/
+        // search/copy relies on — visibility and text-extractability are independent in a PDF.
+        var invisibleBrush = new XSolidBrush(XColor.FromArgb(0, 0, 0, 0));
+
+        foreach (RecognizedWord word in words)
+        {
+            XRect rect = MapWordToPageRect(word, layout, pixelWidth, pixelHeight);
+            if (rect.Width <= 0 || rect.Height <= 0)
+            {
+                continue;
+            }
+
+            // Sized from the word's own recognized box height — invisible text doesn't need to
+            // look right, just roughly occupy the right rect so selection/search highlights land
+            // in the correct place (spec's MVP: "roughly positioned", not pixel-perfect).
+            // "Arial", not "Segoe UI": PDFsharp's built-in WindowsPlatformFontResolver only
+            // resolves a small curated set of standard Windows fonts (Arial/Times/Courier/etc.,
+            // read straight from C:\Windows\Fonts) — Segoe UI isn't in that list.
+            var font = new XFont("Arial", rect.Height * 0.8, XFontStyleEx.Regular);
+            gfx.DrawString(word.Text, font, invisibleBrush, rect, XStringFormats.TopLeft);
+        }
+    }
+
+    /// <summary>
+    /// Maps one OCR word's pixel-space bounding box (top-left origin, already in the page's final
+    /// post-rotation orientation — see <see cref="PageOcr.RecognizeAsync"/>) into absolute page
+    /// points. <paramref name="pixelWidth"/>/<paramref name="pixelHeight"/> are the source image's
+    /// raw (pre-rotation) dimensions, same as <see cref="PageLayout.Compute"/> takes — swapped
+    /// internally here to get the post-rotation reference size the OCR'd pixels actually use.
+    /// </summary>
+    public static XRect MapWordToPageRect(RecognizedWord word, PageLayoutResult layout, int pixelWidth, int pixelHeight)
+    {
+        bool swapped = layout.RotationDegrees is 90 or 270;
+        double postRotationPixelWidth = swapped ? pixelHeight : pixelWidth;
+        double scale = layout.ImageWidthPt / postRotationPixelWidth; // uniform; == layout.ImageHeightPt / postRotationPixelHeight
+
+        double left = layout.ImageX + word.X * scale;
+        double top = layout.ImageY + word.Y * scale;
+
+        return new XRect(left, top, word.Width * scale, word.Height * scale);
     }
 
     // Renders the embedded copy at the quality tier's target DPI. The target pixel dimensions are

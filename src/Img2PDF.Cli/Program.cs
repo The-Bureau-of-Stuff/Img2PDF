@@ -4,6 +4,7 @@ using Img2PDF.Core.Pdf;
 
 string? listPath = null;
 string? outputPath = null;
+bool searchable = false;
 
 for (int i = 0; i < args.Length; i++)
 {
@@ -15,12 +16,15 @@ for (int i = 0; i < args.Length; i++)
         case "--output" when i + 1 < args.Length:
             outputPath = args[++i];
             break;
+        case "--searchable":
+            searchable = true;
+            break;
     }
 }
 
 if (listPath is null || outputPath is null)
 {
-    Console.Error.WriteLine("Usage: Img2PDF.Cli --list <path-to-list-file> --output <output.pdf>");
+    Console.Error.WriteLine("Usage: Img2PDF.Cli --list <path-to-list-file> --output <output.pdf> [--searchable]");
     Console.Error.WriteLine();
     Console.Error.WriteLine("The list file is UTF-8, one absolute image path per line (same shape the");
     Console.Error.WriteLine("shell extension's temp-file handshake will use in a later milestone).");
@@ -53,7 +57,7 @@ foreach (string imagePath in imagePaths)
     pageSources.Add(new PdfPageSource(imagePath, rotation));
 }
 
-await PdfComposer.ComposeAsync(pageSources, outputPath, new PdfOptions());
+await PdfComposer.ComposeAsync(pageSources, outputPath, new PdfOptions(Searchable: searchable));
 
 long inputBytes = imagePaths.Sum(p => new FileInfo(p).Length);
 long outputBytes = new FileInfo(outputPath).Length;

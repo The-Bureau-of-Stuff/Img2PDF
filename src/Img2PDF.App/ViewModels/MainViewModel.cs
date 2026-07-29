@@ -81,6 +81,9 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private bool _greyscale;
 
+    [ObservableProperty]
+    private bool _searchable;
+
     // Spec §4.2 "Remember the last-used choice" — set once at startup from AppSettings by
     // MainWindow before any load call, and re-applied after the initial (always-natural) load
     // completes. See LoadPagesAsync.
@@ -94,7 +97,7 @@ public partial class MainViewModel : ObservableObject
 
     public static IReadOnlyList<string> SupportedFileTypeFilters => SupportedExtensions;
 
-    public PdfOptions CurrentOptions => new(PageSize, Margins, Orientation, Quality, Greyscale);
+    public PdfOptions CurrentOptions => new(PageSize, Margins, Orientation, Quality, Greyscale, Searchable);
 
     public async Task LoadFolderAsync(string folderPath)
     {

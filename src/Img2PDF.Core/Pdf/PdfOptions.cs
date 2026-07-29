@@ -33,4 +33,5 @@ public sealed record PdfOptions(
     MarginsOption Margins = MarginsOption.None,
     OrientationOption Orientation = OrientationOption.Auto,
     QualityOption Quality = QualityOption.Original,
-    bool Greyscale = false);
+    bool Greyscale = false,
+    bool Searchable = false);

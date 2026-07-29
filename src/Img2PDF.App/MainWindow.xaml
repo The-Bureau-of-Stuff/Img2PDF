@@ -131,6 +131,10 @@
                     </StackPanel>
                     <StackPanel Spacing="4" VerticalAlignment="Bottom">
                         <CheckBox Content="Greyscale" IsChecked="{Binding Greyscale, Mode=TwoWay}"/>
+                        <CheckBox
+                            Content="Make searchable (OCR)"
+                            IsChecked="{Binding Searchable, Mode=TwoWay}"
+                            ToolTipService.ToolTip="Adds an invisible, searchable text layer. Works best on clean printed text; increases save time."/>
                     </StackPanel>
                 </StackPanel>
             </Expander>
