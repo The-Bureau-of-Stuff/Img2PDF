@@ -13,7 +13,7 @@ public static class AppSettings
     // implementation covers both packaged and unpackaged execution.
     private static readonly string DefaultFilePath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "Scanstack", "settings.json");
+        "ClickTo PDF", "settings.json");
 
     /// <summary>Best-effort: a missing or corrupt settings file returns defaults rather than throwing.</summary>
     public static AppSettingsData Load(string? filePath = null)

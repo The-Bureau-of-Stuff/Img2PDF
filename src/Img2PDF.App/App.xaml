@@ -8,6 +8,78 @@
             <ResourceDictionary.MergedDictionaries>
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls"/>
             </ResourceDictionary.MergedDictionaries>
+
+            <!-- Named surface palette (docs/ui-refinement-brief.md §4). Dark widens the ladder at
+                 both ends versus the framework defaults (background darker, cards lighter) rather
+                 than just lifting the cards, since a darker background costs nothing in glare — it
+                 carries no content. Light keeps the framework defaults, which are already close to
+                 right, so most Light entries just alias the same system brush the control would have
+                 used anyway (kept as named keys so both themes can be consumed uniformly). -->
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Dark">
+                    <SolidColorBrush x:Key="AppCanvasBackgroundBrush" Color="#141414"/>
+                    <SolidColorBrush x:Key="AppPanelBackgroundBrush" Color="#2F2F2F"/>
+                    <SolidColorBrush x:Key="AppPanelBorderBrush" Color="#474747"/>
+                    <SolidColorBrush x:Key="AppControlBackgroundBrush" Color="#3A3A3A"/>
+                    <SolidColorBrush x:Key="AppControlBorderBrush" Color="#565656"/>
+                    <SolidColorBrush x:Key="AppToolbarButtonBackgroundBrush" Color="#2E2E2E"/>
+                    <SolidColorBrush x:Key="AppToolbarButtonBorderBrush" Color="#4A4A4A"/>
+                    <SolidColorBrush x:Key="AppTileBackgroundBrush" Color="#3B3B3B"/>
+                    <SolidColorBrush x:Key="AppTileBorderBrush" Color="#545454"/>
+                    <SolidColorBrush x:Key="AppPageEdgeBrush" Color="#606060"/>
+
+                    <!-- Framework-key overrides, dark only — Light keeps the system default (that
+                         table row is "framework default" for Light), so these two are intentionally
+                         absent from the Light dictionary below rather than redefined there. -->
+                    <SolidColorBrush x:Key="TextFillColorPrimaryBrush" Color="#F0F0F0"/>
+                    <SolidColorBrush x:Key="TextFillColorSecondaryBrush" Color="#D6D6D6"/>
+
+                    <!-- Unified Options panel: header and body become one continuous surface with
+                         no internal divider. Key names verified against the installed WindowsAppSDK's
+                         source (microsoft/microsoft-ui-xaml, controls/dev/Expander/Expander_themeresources.xaml)
+                         rather than assumed — see brief's own warning that these have shifted before. -->
+                    <StaticResource x:Key="ExpanderHeaderBackground" ResourceKey="AppPanelBackgroundBrush"/>
+                    <StaticResource x:Key="ExpanderContentBackground" ResourceKey="AppPanelBackgroundBrush"/>
+                    <Thickness x:Key="ExpanderHeaderBorderThickness">0</Thickness>
+                    <StaticResource x:Key="ExpanderHeaderBorderBrush" ResourceKey="AppPanelBorderBrush"/>
+                    <StaticResource x:Key="ExpanderContentBorderBrush" ResourceKey="AppPanelBorderBrush"/>
+
+                    <!-- ComboBox ignores an instance-level Background/BorderBrush for its closed-state
+                         chrome — its style sets Background via a Setter, but the template's visual
+                         states drive the rendered fill straight from these named keys (verified against
+                         microsoft/microsoft-ui-xaml, controls/dev/ComboBox/ComboBox_themeresources.xaml),
+                         same as Expander above. Setting the instance property is a silent no-op. -->
+                    <StaticResource x:Key="ComboBoxBackground" ResourceKey="AppControlBackgroundBrush"/>
+                    <StaticResource x:Key="ComboBoxBackgroundUnfocused" ResourceKey="AppControlBackgroundBrush"/>
+                    <StaticResource x:Key="ComboBoxBackgroundFocused" ResourceKey="AppControlBackgroundBrush"/>
+                    <StaticResource x:Key="ComboBoxBorderBrush" ResourceKey="AppControlBorderBrush"/>
+                    <StaticResource x:Key="ComboBoxBackgroundBorderBrushUnfocused" ResourceKey="AppControlBorderBrush"/>
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Light">
+                    <SolidColorBrush x:Key="AppCanvasBackgroundBrush" Color="#F3F3F3"/>
+                    <SolidColorBrush x:Key="AppPanelBackgroundBrush" Color="#FFFFFF"/>
+                    <SolidColorBrush x:Key="AppPanelBorderBrush" Color="#E0E0E0"/>
+                    <SolidColorBrush x:Key="AppControlBackgroundBrush" Color="#F6F6F6"/>
+                    <SolidColorBrush x:Key="AppControlBorderBrush" Color="#DDDDDD"/>
+                    <StaticResource x:Key="AppToolbarButtonBackgroundBrush" ResourceKey="ButtonBackground"/>
+                    <StaticResource x:Key="AppToolbarButtonBorderBrush" ResourceKey="ButtonBorderBrush"/>
+                    <SolidColorBrush x:Key="AppTileBackgroundBrush" Color="#FFFFFF"/>
+                    <SolidColorBrush x:Key="AppTileBorderBrush" Color="#E0E0E0"/>
+                    <SolidColorBrush x:Key="AppPageEdgeBrush" Color="#DCDCE0"/>
+
+                    <StaticResource x:Key="ExpanderHeaderBackground" ResourceKey="AppPanelBackgroundBrush"/>
+                    <StaticResource x:Key="ExpanderContentBackground" ResourceKey="AppPanelBackgroundBrush"/>
+                    <Thickness x:Key="ExpanderHeaderBorderThickness">0</Thickness>
+                    <StaticResource x:Key="ExpanderHeaderBorderBrush" ResourceKey="AppPanelBorderBrush"/>
+                    <StaticResource x:Key="ExpanderContentBorderBrush" ResourceKey="AppPanelBorderBrush"/>
+
+                    <StaticResource x:Key="ComboBoxBackground" ResourceKey="AppControlBackgroundBrush"/>
+                    <StaticResource x:Key="ComboBoxBackgroundUnfocused" ResourceKey="AppControlBackgroundBrush"/>
+                    <StaticResource x:Key="ComboBoxBackgroundFocused" ResourceKey="AppControlBackgroundBrush"/>
+                    <StaticResource x:Key="ComboBoxBorderBrush" ResourceKey="AppControlBorderBrush"/>
+                    <StaticResource x:Key="ComboBoxBackgroundBorderBrushUnfocused" ResourceKey="AppControlBorderBrush"/>
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

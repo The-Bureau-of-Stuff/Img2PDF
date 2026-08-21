@@ -8,7 +8,7 @@ no OCR, no cloud — see `docs/pagemerge-spec.md` for the full spec (working tit
 
 **Naming split, deliberate:** the codebase — repo, solution, all five projects
 (`Img2PDF.App`/`.Core`/`.Cli`/`.ShellExtension`/`.Package`), namespaces, folder names —
-stays `Img2PDF.*`. The product/store-facing name is **Scanstack**: window title, PDF
+stays `Img2PDF.*`. The product/store-facing name is **ClickTo: PDF**: window title, PDF
 `/Producer` metadata, the MSIX manifest's `DisplayName`/`PublisherDisplayName`/
 `SurrogateServer` name, and all `docs/store/*` submission copy. Don't "fix" this
 mismatch by renaming code to match the product name (or vice versa) — it's an

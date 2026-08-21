@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.WindowsRuntime;
 using Img2PDF.App.State;
 using Img2PDF.App.ViewModels;
@@ -54,7 +55,7 @@ public sealed partial class MainWindow : Window
     private MainViewModel InitializeCommon()
     {
         InitializeComponent();
-        Title = "Scanstack";
+        Title = "ClickTo: PDF";
         var viewModel = new MainViewModel(DispatcherQueue);
         RootGrid.DataContext = viewModel;
 
@@ -71,7 +72,17 @@ public sealed partial class MainWindow : Window
         // generic default icon.
         IntPtr hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
         Microsoft.UI.WindowId windowId = Microsoft.UI.Win32Interop.GetWindowIdFromWindow(hwnd);
-        Microsoft.UI.Windowing.AppWindow.GetFromWindowId(windowId).SetIcon("Assets\\Scanstack.ico");
+        Microsoft.UI.Windowing.AppWindow.GetFromWindowId(windowId).SetIcon("Assets\\ClickToPdf.ico");
+
+        // The native titlebar isn't part of the XAML visual tree, so it doesn't pick up the
+        // client area's dark theme on its own — DWM draws it separately and defaults to light
+        // regardless of what ThemeResource the rest of the window resolves to. ActualTheme
+        // already reflects the system app-mode setting (no RequestedTheme override anywhere in
+        // this app), so mirror it into DWM explicitly, and again on ActualThemeChanged in case
+        // the user flips Windows' theme while the app is running.
+        ApplyTitleBarTheme(hwnd, RootGrid.ActualTheme == ElementTheme.Dark);
+        RootGrid.ActualThemeChanged += (sender, _) =>
+            ApplyTitleBarTheme(hwnd, ((FrameworkElement)sender).ActualTheme == ElementTheme.Dark);
 
         AppSettingsData settings = AppSettings.Load();
         ZoomSlider.Value = settings.ZoomValue;
@@ -83,6 +94,17 @@ public sealed partial class MainWindow : Window
         Closed += (_, _) => AppSettings.Save(new AppSettingsData(ZoomSlider.Value, viewModel.CurrentSortOrder));
 
         return viewModel;
+    }
+
+    private const int DwmwaUseImmersiveDarkMode = 20;
+
+    [DllImport("dwmapi.dll")]
+    private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int valueSize);
+
+    private static void ApplyTitleBarTheme(IntPtr hwnd, bool useDarkMode)
+    {
+        int value = useDarkMode ? 1 : 0;
+        DwmSetWindowAttribute(hwnd, DwmwaUseImmersiveDarkMode, ref value, sizeof(int));
     }
 
     private void RootGrid_KeyDown(object sender, KeyRoutedEventArgs e)
@@ -130,6 +152,15 @@ public sealed partial class MainWindow : Window
     }
 
     private void UndoButton_Click(object sender, RoutedEventArgs e) => ViewModel.Undo();
+
+    private bool _optionsExpanded;
+
+    private void OptionsHeaderButton_Click(object sender, RoutedEventArgs e)
+    {
+        _optionsExpanded = !_optionsExpanded;
+        OptionsBody.Visibility = _optionsExpanded ? Visibility.Visible : Visibility.Collapsed;
+        OptionsHeaderChevron.Glyph = _optionsExpanded ? "\uE70E" : "\uE70D";
+    }
 
     private void SortByName_Click(object sender, RoutedEventArgs e) => ApplySortAndPersist(SortOrder.NameNatural);
 
@@ -407,7 +438,7 @@ public sealed partial class MainWindow : Window
     private async void AboutButton_Click(object sender, RoutedEventArgs e)
     {
         Version? version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
-        AppVersionText.Text = version is not null ? $"Scanstack {version.ToString(3)}" : "Scanstack";
+        AppVersionText.Text = version is not null ? $"ClickTo: PDF {version.ToString(3)}" : "ClickTo: PDF";
 
         AboutDialog.XamlRoot = RootGrid.XamlRoot;
         await AboutDialog.ShowAsync();

@@ -9,21 +9,19 @@
   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
   IgnorableNamespaces="uap rescap">
 
-  <!-- Name and Publisher are placeholders for local sideloading only. Before the first
-       Store submission both must be replaced with the values Partner Center assigns on
-       the Product identity page (Name looks like "12345Gavin.Scanstack", Publisher is the
-       full CN=... GUID string). Publisher must also match the dev cert's Subject exactly
-       for Add-AppxPackage to accept a locally-signed build. -->
+  <!-- Values from Partner Center's Product identity page. Publisher must also match the
+       dev cert's Subject exactly for Add-AppxPackage to accept a locally-signed build —
+       regenerate the cert after changing this. -->
   <Identity
-    Name="Img2PDF"
-    Publisher="CN=Img2PDF Dev"
-    Version="0.5.13.0" />
+    Name="TheBureauofStuff.ClickToPDF"
+    Publisher="CN=6ACAA7C7-CCDB-4E63-ABCE-1383DE9B3AE4"
+    Version="0.5.14.0" />
 
   <Properties>
     <!-- Must match a name reserved in Partner Center character-for-character, or
          submission fails identity validation. -->
-    <DisplayName>Scanstack</DisplayName>
-    <PublisherDisplayName>Gavin Charlesworth</PublisherDisplayName>
+    <DisplayName>ClickTo: PDF</DisplayName>
+    <PublisherDisplayName>The Bureau of Stuff</PublisherDisplayName>
     <Logo>Images\StoreLogo.png</Logo>
   </Properties>
 
@@ -50,7 +48,7 @@
            transparency so this colour forms the tile; Square44x44 and StoreLogo carry
            their own plate because they render standalone in the taskbar and Store. -->
       <uap:VisualElements
-        DisplayName="Scanstack"
+        DisplayName="ClickTo: PDF"
         Description="Combine images into a single PDF from File Explorer — reorder pages as thumbnails, rotate, and save. Works entirely offline."
         BackgroundColor="#31418C"
         Square150x150Logo="Images\Square150x150Logo.png"
@@ -67,7 +65,7 @@
              the standard mechanism for a native shell extension inside an MSIX package. -->
         <com:Extension Category="windows.comServer">
           <com:ComServer>
-            <com:SurrogateServer DisplayName="Scanstack Shell Extension">
+            <com:SurrogateServer DisplayName="ClickTo: PDF Shell Extension">
               <com:Class Id="6AC60BE2-CE29-4AEA-8BFF-718F5868B942" Path="Img2PDF.ShellExtension\Img2PDF.ShellExtension.dll" ThreadingModel="STA" />
             </com:SurrogateServer>
           </com:ComServer>

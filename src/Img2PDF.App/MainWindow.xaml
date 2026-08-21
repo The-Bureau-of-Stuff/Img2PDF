@@ -7,7 +7,7 @@
 
     <Grid
         x:Name="RootGrid"
-        Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
+        Background="{ThemeResource AppCanvasBackgroundBrush}"
         AllowDrop="True"
         DragOver="RootGrid_DragOver"
         Drop="RootGrid_Drop">
@@ -61,10 +61,14 @@
                     <Button
                         Content="Undo"
                         Click="UndoButton_Click"
+                        Background="{ThemeResource AppToolbarButtonBackgroundBrush}"
+                        BorderBrush="{ThemeResource AppToolbarButtonBorderBrush}"
                         ToolTipService.ToolTip="Undo the last change"
                         AutomationProperties.Name="Undo"/>
                     <SplitButton
                         Content="Sort"
+                        Background="{ThemeResource AppToolbarButtonBackgroundBrush}"
+                        BorderBrush="{ThemeResource AppToolbarButtonBorderBrush}"
                         ToolTipService.ToolTip="Change page order"
                         AutomationProperties.Name="Sort">
                         <SplitButton.Flyout>
@@ -87,61 +91,97 @@
                     <Button
                         Style="{StaticResource IconButtonStyle}"
                         Click="AboutButton_Click"
-                        ToolTipService.ToolTip="About Scanstack"
-                        AutomationProperties.Name="About Scanstack">
+                        ToolTipService.ToolTip="About ClickTo: PDF"
+                        AutomationProperties.Name="About ClickTo: PDF">
                         <FontIcon Glyph="&#xE946;" FontSize="16"/>
                     </Button>
                 </StackPanel>
             </Grid>
 
-            <Expander Grid.Row="1" Header="Options" IsExpanded="False" Margin="12,0,12,8"
-                      HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
-                <StackPanel Orientation="Horizontal" Spacing="16" Padding="8">
-                    <StackPanel Spacing="4">
-                        <TextBlock Text="Page size"/>
-                        <ComboBox x:Name="PageSizeCombo" SelectedIndex="0" SelectionChanged="PageSizeCombo_SelectionChanged">
-                            <ComboBoxItem Content="A4"/>
-                            <ComboBoxItem Content="Letter"/>
-                            <ComboBoxItem Content="Match image"/>
-                        </ComboBox>
+            <!-- Hand-rolled instead of Expander: Expander's header/body chrome comes from
+                 ExpanderHeaderBackground/ExpanderContentBackground theme-resource keys, which
+                 default to two *different* system brushes (CardBackgroundFillColorDefaultBrush vs
+                 CardBackgroundFillColorSecondaryBrush) — overriding those keys in App.xaml had no
+                 visible effect (their exact names apparently don't match this WindowsAppSDK build;
+                 its XAML source isn't shipped locally to verify against, unlike ComboBox's, which
+                 hit the same silent-no-op problem and got the same fix). Button and Border are both
+                 confirmed to honor an instance-level Background/BorderBrush, so this guarantees the
+                 header and body are the literal same brush rather than hoping two resource keys
+                 happen to agree. Costs the built-in expand/collapse animation. -->
+            <StackPanel Grid.Row="1" Margin="12,0,12,8">
+                <Button
+                    x:Name="OptionsHeaderButton"
+                    Click="OptionsHeaderButton_Click"
+                    Background="{ThemeResource AppPanelBackgroundBrush}"
+                    BorderBrush="{ThemeResource AppPanelBorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="4,4,0,0"
+                    Padding="12,10"
+                    HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Stretch">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Options" VerticalAlignment="Center"/>
+                        <FontIcon x:Name="OptionsHeaderChevron" Grid.Column="1" Glyph="&#xE70D;" FontSize="12" VerticalAlignment="Center"/>
+                    </Grid>
+                </Button>
+                <Border
+                    x:Name="OptionsBody"
+                    Background="{ThemeResource AppPanelBackgroundBrush}"
+                    BorderBrush="{ThemeResource AppPanelBorderBrush}"
+                    BorderThickness="1,0,1,1"
+                    CornerRadius="0,0,4,4"
+                    Visibility="Collapsed">
+                    <StackPanel Orientation="Horizontal" Spacing="16" Padding="8">
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="Page size"/>
+                            <ComboBox x:Name="PageSizeCombo" SelectedIndex="0" SelectionChanged="PageSizeCombo_SelectionChanged">
+                                <ComboBoxItem Content="A4"/>
+                                <ComboBoxItem Content="Letter"/>
+                                <ComboBoxItem Content="Match image"/>
+                            </ComboBox>
+                        </StackPanel>
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="Margins"/>
+                            <ComboBox x:Name="MarginsCombo" SelectedIndex="0" SelectionChanged="MarginsCombo_SelectionChanged">
+                                <ComboBoxItem Content="None"/>
+                                <ComboBoxItem Content="Narrow (5 mm)"/>
+                                <ComboBoxItem Content="Standard (10 mm)"/>
+                            </ComboBox>
+                        </StackPanel>
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="Orientation"/>
+                            <ComboBox x:Name="OrientationCombo" SelectedIndex="0" SelectionChanged="OrientationCombo_SelectionChanged">
+                                <ComboBoxItem Content="Auto per page"/>
+                                <ComboBoxItem Content="Force portrait"/>
+                            </ComboBox>
+                        </StackPanel>
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="Quality"/>
+                            <ComboBox x:Name="QualityCombo" SelectedIndex="0" SelectionChanged="QualityCombo_SelectionChanged">
+                                <ComboBoxItem Content="Original"/>
+                                <ComboBoxItem Content="High (300 DPI)"/>
+                                <ComboBoxItem Content="Medium (200 DPI)"/>
+                                <ComboBoxItem Content="Small (150 DPI)"/>
+                            </ComboBox>
+                        </StackPanel>
+                        <StackPanel Spacing="4" VerticalAlignment="Bottom">
+                            <CheckBox Content="Greyscale" IsChecked="{Binding Greyscale, Mode=TwoWay}"/>
+                            <CheckBox
+                                Content="Make searchable (OCR)"
+                                IsChecked="{Binding Searchable, Mode=TwoWay}"
+                                ToolTipService.ToolTip="Adds an invisible, searchable text layer. Works best on clean printed text; increases save time."/>
+                            <CheckBox
+                                Content="Auto-deskew"
+                                IsChecked="{Binding Deskew, Mode=TwoWay}"
+                                ToolTipService.ToolTip="Straightens pages scanned in slightly crooked. Only helps pages with real printed text, and adds the same OCR cost as Make searchable."/>
+                        </StackPanel>
                     </StackPanel>
-                    <StackPanel Spacing="4">
-                        <TextBlock Text="Margins"/>
-                        <ComboBox x:Name="MarginsCombo" SelectedIndex="0" SelectionChanged="MarginsCombo_SelectionChanged">
-                            <ComboBoxItem Content="None"/>
-                            <ComboBoxItem Content="Narrow (5 mm)"/>
-                            <ComboBoxItem Content="Standard (10 mm)"/>
-                        </ComboBox>
-                    </StackPanel>
-                    <StackPanel Spacing="4">
-                        <TextBlock Text="Orientation"/>
-                        <ComboBox x:Name="OrientationCombo" SelectedIndex="0" SelectionChanged="OrientationCombo_SelectionChanged">
-                            <ComboBoxItem Content="Auto per page"/>
-                            <ComboBoxItem Content="Force portrait"/>
-                        </ComboBox>
-                    </StackPanel>
-                    <StackPanel Spacing="4">
-                        <TextBlock Text="Quality"/>
-                        <ComboBox x:Name="QualityCombo" SelectedIndex="0" SelectionChanged="QualityCombo_SelectionChanged">
-                            <ComboBoxItem Content="Original"/>
-                            <ComboBoxItem Content="High (300 DPI)"/>
-                            <ComboBoxItem Content="Medium (200 DPI)"/>
-                            <ComboBoxItem Content="Small (150 DPI)"/>
-                        </ComboBox>
-                    </StackPanel>
-                    <StackPanel Spacing="4" VerticalAlignment="Bottom">
-                        <CheckBox Content="Greyscale" IsChecked="{Binding Greyscale, Mode=TwoWay}"/>
-                        <CheckBox
-                            Content="Make searchable (OCR)"
-                            IsChecked="{Binding Searchable, Mode=TwoWay}"
-                            ToolTipService.ToolTip="Adds an invisible, searchable text layer. Works best on clean printed text; increases save time."/>
-                        <CheckBox
-                            Content="Auto-deskew"
-                            IsChecked="{Binding Deskew, Mode=TwoWay}"
-                            ToolTipService.ToolTip="Straightens pages scanned in slightly crooked. Only helps pages with real printed text, and adds the same OCR cost as Make searchable."/>
-                    </StackPanel>
-                </StackPanel>
-            </Expander>
+                </Border>
+            </StackPanel>
 
             <StackPanel
                 x:Name="SaveProgressPanel"
@@ -244,8 +284,8 @@
                             PointerExited="Tile_PointerExited">
 
                             <Border
-                                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                Background="{ThemeResource AppTileBackgroundBrush}"
+                                BorderBrush="{ThemeResource AppTileBorderBrush}"
                                 BorderThickness="1"
                                 CornerRadius="4">
                                 <Grid>
@@ -255,14 +295,18 @@
                                     </Grid.RowDefinitions>
 
                                     <Grid Grid.Row="0">
-                                        <Image
-                                            Source="{x:Bind ThumbnailSource, Mode=OneWay}"
-                                            Stretch="Uniform"
-                                            RenderTransformOrigin="0.5,0.5">
-                                            <Image.RenderTransform>
-                                                <RotateTransform Angle="{x:Bind RotationDegrees, Mode=OneWay}"/>
-                                            </Image.RenderTransform>
-                                        </Image>
+                                        <!-- Hairline so the page doesn't butt straight against the tile background —
+                                             most of the fix for dark-theme glare (brief §4). -->
+                                        <Border BorderBrush="{ThemeResource AppPageEdgeBrush}" BorderThickness="1">
+                                            <Image
+                                                Source="{x:Bind ThumbnailSource, Mode=OneWay}"
+                                                Stretch="Uniform"
+                                                RenderTransformOrigin="0.5,0.5">
+                                                <Image.RenderTransform>
+                                                    <RotateTransform Angle="{x:Bind RotationDegrees, Mode=OneWay}"/>
+                                                </Image.RenderTransform>
+                                            </Image>
+                                        </Border>
 
                                         <!-- Plain text, not ProgressRing: ProgressRing.IsActive crashed
                                              natively (Microsoft.UI.Xaml.dll, 0xc000027b) inside this
@@ -474,7 +518,7 @@
              rather than anything sourced from a converter or resource. -->
         <ContentDialog
             x:Name="AboutDialog"
-            Title="About Scanstack"
+            Title="About ClickTo: PDF"
             CloseButtonText="Close"
             DefaultButton="Close">
             <ScrollViewer MaxHeight="400" HorizontalScrollBarVisibility="Disabled">

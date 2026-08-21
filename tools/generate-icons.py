@@ -1,4 +1,4 @@
-"""Generates the full Scanstack MSIX icon asset set from a single vector definition.
+"""Generates the full ClickTo MSIX icon asset set from a single vector definition.
 
 Run:  python tools/generate-icons.py
 Writes to src/Img2PDF.Package/Images/ and tools/out/ (store + .ico extras).
@@ -156,7 +156,7 @@ def main():
     ico_sizes = [16, 20, 24, 32, 40, 48, 64, 128, 256]
     frames = [MASTER_TILED.resize((s, s), Image.LANCZOS) for s in ico_sizes]
     os.makedirs(OUT_DIR, exist_ok=True)
-    ico_path = os.path.join(OUT_DIR, "Scanstack.ico")
+    ico_path = os.path.join(OUT_DIR, "ClickToPdf.ico")
     frames[-1].save(ico_path, format="ICO", sizes=[(s, s) for s in ico_sizes])
     print("wrote", os.path.relpath(ico_path, os.path.join(HERE, "..")))
 
