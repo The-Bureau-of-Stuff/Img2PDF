@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <!-- Toolbar -->
+  <data name="ZoomLabel.Text" xml:space="preserve"><value>Zoom</value></data>
+  <data name="UndoButton.Content" xml:space="preserve"><value>Undo</value></data>
+  <data name="UndoButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>Undo the last change</value></data>
+  <data name="UndoButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Undo</value></data>
+  <data name="SortButton.Content" xml:space="preserve"><value>Sort</value></data>
+  <data name="SortButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>Change page order</value></data>
+  <data name="SortButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Sort</value></data>
+  <data name="SortByNameItem.Text" xml:space="preserve"><value>Name (natural)</value></data>
+  <data name="SortByDateTakenItem.Text" xml:space="preserve"><value>Date taken</value></data>
+  <data name="SortByDateModifiedItem.Text" xml:space="preserve"><value>Date modified</value></data>
+  <data name="ReverseOrderItem.Text" xml:space="preserve"><value>Reverse current</value></data>
+  <data name="SaveButton.Content" xml:space="preserve"><value>Save</value></data>
+  <data name="AboutButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>About ClickTo: PDF</value></data>
+  <data name="AboutButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>About ClickTo: PDF</value></data>
+
+  <!-- Options panel -->
+  <data name="OptionsHeaderText.Text" xml:space="preserve"><value>Options</value></data>
+  <data name="PageSizeLabel.Text" xml:space="preserve"><value>Page size</value></data>
+  <data name="PageSizeA4Item.Content" xml:space="preserve"><value>A4</value></data>
+  <data name="PageSizeLetterItem.Content" xml:space="preserve"><value>Letter</value></data>
+  <data name="PageSizeMatchImageItem.Content" xml:space="preserve"><value>Match image</value></data>
+  <data name="MarginsLabel.Text" xml:space="preserve"><value>Margins</value></data>
+  <data name="MarginsNoneItem.Content" xml:space="preserve"><value>None</value></data>
+  <data name="MarginsNarrowItem.Content" xml:space="preserve"><value>Narrow (5 mm)</value></data>
+  <data name="MarginsStandardItem.Content" xml:space="preserve"><value>Standard (10 mm)</value></data>
+  <data name="OrientationLabel.Text" xml:space="preserve"><value>Orientation</value></data>
+  <data name="OrientationAutoItem.Content" xml:space="preserve"><value>Auto per page</value></data>
+  <data name="OrientationPortraitItem.Content" xml:space="preserve"><value>Force portrait</value></data>
+  <data name="QualityLabel.Text" xml:space="preserve"><value>Quality</value></data>
+  <data name="QualityOriginalItem.Content" xml:space="preserve"><value>Original</value></data>
+  <data name="QualityHighItem.Content" xml:space="preserve"><value>High (300 DPI)</value></data>
+  <data name="QualityMediumItem.Content" xml:space="preserve"><value>Medium (200 DPI)</value></data>
+  <data name="QualitySmallItem.Content" xml:space="preserve"><value>Small (150 DPI)</value></data>
+  <data name="GreyscaleCheckBox.Content" xml:space="preserve"><value>Greyscale</value></data>
+  <data name="SearchableCheckBox.Content" xml:space="preserve"><value>Make searchable (OCR)</value></data>
+  <data name="SearchableCheckBox.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>Adds an invisible, searchable text layer. Works best on clean printed text; increases save time.</value></data>
+  <data name="DeskewCheckBox.Content" xml:space="preserve"><value>Auto-deskew</value></data>
+  <data name="DeskewCheckBox.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>Straightens pages scanned in slightly crooked. Only helps pages with real printed text, and adds the same OCR cost as Make searchable.</value></data>
+
+  <!-- Save progress -->
+  <data name="CancelSaveButton.Content" xml:space="preserve"><value>Cancel</value></data>
+
+  <!-- Empty state -->
+  <data name="EmptyStateText.Text" xml:space="preserve"><value>Drop images here, or</value></data>
+  <data name="ChooseImagesButton.Content" xml:space="preserve"><value>Choose images&#8230;</value></data>
+  <data name="ChooseImagesButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Choose images</value></data>
+
+  <!-- Page tile -->
+  <data name="LoadingText.Text" xml:space="preserve"><value>Loading&#8230;</value></data>
+  <data name="CantLoadText.Text" xml:space="preserve"><value>Can't load</value></data>
+  <data name="PreviewPageButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>Preview page</value></data>
+  <data name="PreviewPageButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Preview page</value></data>
+  <data name="TileRotateButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>Rotate right</value></data>
+  <data name="TileRotateButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Rotate right</value></data>
+  <data name="TileRemoveButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>Remove from document</value></data>
+  <data name="TileRemoveButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Remove from document</value></data>
+
+  <!-- InfoBars -->
+  <data name="SkippedFilesInfoBar.Title" xml:space="preserve"><value>Some items were skipped</value></data>
+  <data name="SaveSuccessInfoBar.Title" xml:space="preserve"><value>Saved</value></data>
+  <data name="OpenSavedFileButton.Content" xml:space="preserve"><value>Open</value></data>
+  <data name="ShowInFolderButton.Content" xml:space="preserve"><value>Show in folder</value></data>
+  <data name="OcrLimitedInfoBar.Title" xml:space="preserve"><value>Some pages aren't searchable</value></data>
+  <data name="OcrNoEngineMessage" xml:space="preserve"><value>No OCR language pack is installed for your Windows display language, so no pages could be made searchable. Install one in Settings &#8594; Time &amp; language &#8594; Language &amp; region, then save again.</value></data>
+  <data name="OcrPartialSearchableFormat" xml:space="preserve">
+    <value>{0} of {1} page(s) didn't get a searchable text layer. OCR works best on clean printed text &#8212; handwriting, heavy skew, and low-contrast scans may not be recognized.</value>
+    <comment>{0} = pages without searchable text, {1} = total pages</comment>
+  </data>
+
+  <!-- Floating add button -->
+  <data name="AddMoreButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>Add more images</value></data>
+  <data name="AddMoreButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Add more images</value></data>
+
+  <!-- Preview overlay -->
+  <data name="PreviewCloseButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>Close preview</value></data>
+  <data name="PreviewCloseButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Close preview</value></data>
+  <data name="PreviewRotateButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>Rotate right</value></data>
+  <data name="PreviewRotateButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Rotate right</value></data>
+  <data name="PreviewIndicatorFormat" xml:space="preserve">
+    <value>{0} of {1}</value>
+    <comment>{0} = current page number, {1} = total page count, e.g. "3 of 12"</comment>
+  </data>
+
+  <!-- About dialog -->
+  <data name="AboutDialog.Title" xml:space="preserve"><value>About ClickTo: PDF</value></data>
+  <data name="AboutDialog.CloseButtonText" xml:space="preserve"><value>Close</value></data>
+  <data name="AppDescriptionText" xml:space="preserve"><value>Combine images into a single PDF from File Explorer.</value></data>
+
+  <!-- Window title / version (code-behind) -->
+  <data name="WindowTitle" xml:space="preserve"><value>ClickTo: PDF</value></data>
+  <data name="AppVersionFormat" xml:space="preserve">
+    <value>ClickTo: PDF {0}</value>
+    <comment>{0} = version number, e.g. "1.2.0"</comment>
+  </data>
+
+  <!-- Converters -->
+  <data name="PageCountSingular" xml:space="preserve"><value>1 page</value></data>
+  <data name="PageCountPluralFormat" xml:space="preserve">
+    <value>{0} pages</value>
+    <comment>{0} = page count, always 0 or 2+ (the "1 page" case uses PageCountSingular instead)</comment>
+  </data>
+
+  <!-- ViewModel-composed messages -->
+  <data name="SkippedFilesFormat" xml:space="preserve">
+    <value>{0} item(s) skipped: {1}</value>
+    <comment>{0} = count, {1} = comma-separated file names</comment>
+  </data>
+  <data name="HeicCodecMissingMessage" xml:space="preserve"><value>This HEIC photo needs the free "HEIF Image Extensions" app from the Microsoft Store to open. Search for it by name in the Store, install it, then reload this file.</value></data>
+</root>

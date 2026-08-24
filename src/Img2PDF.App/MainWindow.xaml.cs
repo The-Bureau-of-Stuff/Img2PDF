@@ -11,6 +11,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
+using Microsoft.Windows.ApplicationModel.Resources;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage;
 using Windows.Storage.Pickers;
@@ -23,6 +24,8 @@ namespace Img2PDF.App;
 public sealed partial class MainWindow : Window
 {
     public MainViewModel ViewModel { get; }
+
+    private static readonly ResourceLoader ResourceLoader = new();
 
     private CancellationTokenSource? _saveCts;
     private string? _lastSavedPath;
@@ -55,7 +58,8 @@ public sealed partial class MainWindow : Window
     private MainViewModel InitializeCommon()
     {
         InitializeComponent();
-        Title = "ClickTo: PDF";
+        Title = ResourceLoader.GetString("WindowTitle");
+        AppDescriptionRun.Text = ResourceLoader.GetString("AppDescriptionText");
         var viewModel = new MainViewModel(DispatcherQueue);
         RootGrid.DataContext = viewModel;
 
@@ -283,7 +287,8 @@ public sealed partial class MainWindow : Window
         }
 
         int index = ViewModel.Pages.IndexOf(_previewItem);
-        PreviewIndicatorText.Text = $"{index + 1} of {ViewModel.Pages.Count}";
+        PreviewIndicatorText.Text = string.Format(
+            ResourceLoader.GetString("PreviewIndicatorFormat"), index + 1, ViewModel.Pages.Count);
     }
 
     private void PreviewOverlay_Tapped(object sender, TappedRoutedEventArgs e) => ClosePreview();
@@ -438,7 +443,9 @@ public sealed partial class MainWindow : Window
     private async void AboutButton_Click(object sender, RoutedEventArgs e)
     {
         Version? version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
-        AppVersionText.Text = version is not null ? $"ClickTo: PDF {version.ToString(3)}" : "ClickTo: PDF";
+        AppVersionText.Text = version is not null
+            ? string.Format(ResourceLoader.GetString("AppVersionFormat"), version.ToString(3))
+            : ResourceLoader.GetString("WindowTitle");
 
         AboutDialog.XamlRoot = RootGrid.XamlRoot;
         await AboutDialog.ShowAsync();
@@ -491,10 +498,11 @@ public sealed partial class MainWindow : Window
 
         try
         {
-            await Task.Run(() => ViewModel.SaveAsync(file.Path, _saveCts.Token, progress));
+            PdfComposeResult result = await Task.Run(() => ViewModel.SaveAsync(file.Path, _saveCts.Token, progress));
             _lastSavedPath = file.Path;
             SaveSuccessInfoBar.Message = file.Name;
             SaveSuccessInfoBar.IsOpen = true;
+            ReportOcrOutcome(result);
         }
         catch (OperationCanceledException)
         {
@@ -519,6 +527,33 @@ public sealed partial class MainWindow : Window
             SaveProgressPanel.Visibility = Visibility.Collapsed;
             _saveCts.Dispose();
             _saveCts = null;
+        }
+    }
+
+    // Both fields are self-gating (PdfComposer sets OcrEngineAvailable = true and
+    // PagesWithoutSearchableText = 0 whenever Searchable wasn't on for this save), so no separate
+    // check against ViewModel.Searchable is needed here.
+    private void ReportOcrOutcome(PdfComposeResult result)
+    {
+        if (!result.OcrEngineAvailable)
+        {
+            OcrLimitedInfoBar.Message = ResourceLoader.GetString("OcrNoEngineMessage");
+            OcrLimitedInfoBar.IsOpen = true;
+        }
+        else if (result.PagesWithoutSearchableText > 0)
+        {
+            OcrLimitedInfoBar.Message = string.Format(
+                ResourceLoader.GetString("OcrPartialSearchableFormat"),
+                result.PagesWithoutSearchableText,
+                result.TotalPages);
+            OcrLimitedInfoBar.IsOpen = true;
+        }
+        else
+        {
+            // A previous save on this same window may have left this open — a subsequent clean
+            // save (Searchable off, or every page recognized something) must clear it rather than
+            // leave stale OCR-warning text sitting under a fresh success message.
+            OcrLimitedInfoBar.IsOpen = false;
         }
     }
 

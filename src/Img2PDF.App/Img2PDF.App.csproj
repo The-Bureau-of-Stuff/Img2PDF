@@ -43,4 +43,11 @@
     </Content>
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Not auto-included by the SDK's default item globs despite EnableDefaultItems being on
+         (a known .NET SDK / WinAppSDK gap) — without this, .resw files build but never get
+         indexed into the app's .pri, so every x:Uid/ResourceLoader lookup silently misses. -->
+    <PRIResource Include="Strings\**\*.resw" />
+  </ItemGroup>
+
 </Project>

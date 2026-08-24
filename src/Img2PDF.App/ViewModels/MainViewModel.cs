@@ -7,6 +7,7 @@ using Img2PDF.Core.Imaging;
 using Img2PDF.Core.Pdf;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml.Media.Imaging;
+using Microsoft.Windows.ApplicationModel.Resources;
 using Windows.Storage.Streams;
 
 namespace Img2PDF.App.ViewModels;
@@ -25,6 +26,8 @@ public partial class MainViewModel : ObservableObject
     // Image Extensions" — worth a specific message rather than a bare "Can't load" (spec §8 item 7).
     private const int WinCodecErrComponentNotFound = unchecked((int)0x88982F50);
     private static readonly string[] HeifExtensions = { ".heic", ".heif" };
+
+    private static readonly ResourceLoader ResourceLoader = new();
 
     private readonly UndoStack<Action> _undoStack = new(capacity: 20);
     private readonly SemaphoreSlim _thumbnailSemaphore = new(MaxConcurrentThumbnailLoads);
@@ -203,7 +206,8 @@ public partial class MainViewModel : ObservableObject
     {
         HasSkippedFiles = skippedNames.Count > 0;
         SkippedFilesMessage = HasSkippedFiles
-            ? $"{skippedNames.Count} item(s) skipped: {string.Join(", ", skippedNames)}"
+            ? string.Format(
+                ResourceLoader.GetString("SkippedFilesFormat"), skippedNames.Count, string.Join(", ", skippedNames))
             : null;
     }
 
@@ -419,7 +423,7 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
-    public Task SaveAsync(string outputPath, CancellationToken cancellationToken, IProgress<int>? progress = null)
+    public Task<PdfComposeResult> SaveAsync(string outputPath, CancellationToken cancellationToken, IProgress<int>? progress = null)
     {
         var pageSources = Pages.Select(p => new PdfPageSource(p.SourcePath, p.RotationDegrees)).ToList();
         return PdfComposer.ComposeAsync(pageSources, outputPath, CurrentOptions, progress, cancellationToken);
@@ -517,8 +521,7 @@ public partial class MainViewModel : ObservableObject
         bool isHeif = HeifExtensions.Contains(Path.GetExtension(sourcePath), StringComparer.OrdinalIgnoreCase);
         if (isHeif && ex.HResult == WinCodecErrComponentNotFound)
         {
-            return "This HEIC photo needs the free \"HEIF Image Extensions\" app from the Microsoft Store " +
-                "to open. Search for it by name in the Store, install it, then reload this file.";
+            return ResourceLoader.GetString("HeicCodecMissingMessage");
         }
 
         return ex.Message;
