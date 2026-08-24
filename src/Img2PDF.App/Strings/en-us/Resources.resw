@@ -52,7 +52,7 @@
   <data name="SearchableCheckBox.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>Adds an invisible, searchable text layer. Works best on clean printed text; increases save time.</value></data>
   <data name="DeskewCheckBox.Content" xml:space="preserve"><value>Auto-deskew</value></data>
   <data name="DeskewCheckBox.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>Straightens pages scanned in slightly crooked. Only helps pages with real printed text, and adds the same OCR cost as Make searchable.</value></data>
-  <data name="OcrHandwritingDisclaimer" xml:space="preserve"><value>* OCR recognizes printed text only — handwriting isn't supported and may produce garbled or no searchable text.</value></data>
+  <data name="OcrHandwritingDisclaimer.Text" xml:space="preserve"><value>* OCR recognizes printed text only — handwriting isn't supported and may produce garbled or no searchable text.</value></data>
 
   <!-- Save progress -->
   <data name="CancelSaveButton.Content" xml:space="preserve"><value>Cancel</value></data>
