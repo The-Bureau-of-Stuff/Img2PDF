@@ -8,11 +8,6 @@ using Windows.Media.Ocr;
 
 namespace Img2PDF.Core.Pdf;
 
-/// <summary>OCR outcome of a save. <paramref name="PagesWithoutSearchableText"/> and
-/// <paramref name="OcrEngineAvailable"/> are only meaningful when <see cref="PdfOptions.Searchable"/>
-/// was on for the save — both report a soft-fail state that never blocks or corrupts the output.</summary>
-public sealed record PdfComposeResult(bool OcrEngineAvailable, int TotalPages, int PagesWithoutSearchableText);
-
 public static class PdfComposer
 {
     private static readonly string[] JpegExtensions = { ".jpg", ".jpeg" };
@@ -34,7 +29,7 @@ public static class PdfComposer
     /// original bytes, since PDF has no filter that maps to non-JPEG source formats directly. Only
     /// the High/Medium/Small quality tiers resample and recompress lossily as JPEG.
     /// </summary>
-    public static async Task<PdfComposeResult> ComposeAsync(
+    public static async Task ComposeAsync(
         IReadOnlyList<PdfPageSource> pages,
         string outputPath,
         PdfOptions options,
@@ -59,7 +54,6 @@ public static class PdfComposer
         // and Deskew both just silently do nothing extra rather than blocking the save. Both
         // features share one OCR call per page (below) rather than running the engine twice.
         OcrEngine? ocrEngine = (options.Searchable || options.Deskew) ? PageOcr.TryCreateEngine() : null;
-        int pagesWithoutSearchableText = 0;
 
         if (ocrEngine is not null && options.Searchable)
         {
@@ -135,15 +129,6 @@ public static class PdfComposer
             {
                 DrawOcrTextLayer(gfx, ocrResult.Words, layout, info.PixelWidth, info.PixelHeight);
             }
-            else if (options.Searchable)
-            {
-                // Same soft-fail signal whether the cause is no OCR-capable language pack, an
-                // oversized/undecodable page, or content the engine just can't read (handwriting,
-                // heavy skew) — all collapse to "zero words back" and are indistinguishable from
-                // here. Aggregated below so the caller can surface one honest summary rather than
-                // guessing at a specific cause per page.
-                pagesWithoutSearchableText++;
-            }
 
             gfx.Restore(deskewState);
 
@@ -151,9 +136,6 @@ public static class PdfComposer
         }
 
         document.Save(outputPath);
-
-        bool ocrEngineAvailable = !options.Searchable || ocrEngine is not null;
-        return new PdfComposeResult(ocrEngineAvailable, pages.Count, pagesWithoutSearchableText);
     }
 
     // Isolated failure domain per spec: a page that can't be OCR'd (unsupported format, decode

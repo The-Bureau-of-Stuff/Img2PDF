@@ -423,7 +423,7 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
-    public Task<PdfComposeResult> SaveAsync(string outputPath, CancellationToken cancellationToken, IProgress<int>? progress = null)
+    public Task SaveAsync(string outputPath, CancellationToken cancellationToken, IProgress<int>? progress = null)
     {
         var pageSources = Pages.Select(p => new PdfPageSource(p.SourcePath, p.RotationDegrees)).ToList();
         return PdfComposer.ComposeAsync(pageSources, outputPath, CurrentOptions, progress, cancellationToken);

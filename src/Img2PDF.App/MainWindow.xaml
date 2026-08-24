@@ -130,48 +130,60 @@
                     BorderThickness="1,0,1,1"
                     CornerRadius="0,0,4,4"
                     Visibility="Collapsed">
-                    <StackPanel Orientation="Horizontal" Spacing="16" Padding="8">
-                        <StackPanel Spacing="4">
-                            <TextBlock x:Uid="PageSizeLabel"/>
-                            <ComboBox x:Name="PageSizeCombo" SelectedIndex="0" SelectionChanged="PageSizeCombo_SelectionChanged">
-                                <ComboBoxItem x:Uid="PageSizeA4Item"/>
-                                <ComboBoxItem x:Uid="PageSizeLetterItem"/>
-                                <ComboBoxItem x:Uid="PageSizeMatchImageItem"/>
-                            </ComboBox>
+                    <StackPanel Spacing="8" Padding="8">
+                        <StackPanel Orientation="Horizontal" Spacing="16">
+                            <StackPanel Spacing="4">
+                                <TextBlock x:Uid="PageSizeLabel"/>
+                                <ComboBox x:Name="PageSizeCombo" SelectedIndex="0" SelectionChanged="PageSizeCombo_SelectionChanged">
+                                    <ComboBoxItem x:Uid="PageSizeA4Item"/>
+                                    <ComboBoxItem x:Uid="PageSizeLetterItem"/>
+                                    <ComboBoxItem x:Uid="PageSizeMatchImageItem"/>
+                                </ComboBox>
+                            </StackPanel>
+                            <StackPanel Spacing="4">
+                                <TextBlock x:Uid="MarginsLabel"/>
+                                <ComboBox x:Name="MarginsCombo" SelectedIndex="0" SelectionChanged="MarginsCombo_SelectionChanged">
+                                    <ComboBoxItem x:Uid="MarginsNoneItem"/>
+                                    <ComboBoxItem x:Uid="MarginsNarrowItem"/>
+                                    <ComboBoxItem x:Uid="MarginsStandardItem"/>
+                                </ComboBox>
+                            </StackPanel>
+                            <StackPanel Spacing="4">
+                                <TextBlock x:Uid="OrientationLabel"/>
+                                <ComboBox x:Name="OrientationCombo" SelectedIndex="0" SelectionChanged="OrientationCombo_SelectionChanged">
+                                    <ComboBoxItem x:Uid="OrientationAutoItem"/>
+                                    <ComboBoxItem x:Uid="OrientationPortraitItem"/>
+                                </ComboBox>
+                            </StackPanel>
+                            <StackPanel Spacing="4">
+                                <TextBlock x:Uid="QualityLabel"/>
+                                <ComboBox x:Name="QualityCombo" SelectedIndex="0" SelectionChanged="QualityCombo_SelectionChanged">
+                                    <ComboBoxItem x:Uid="QualityOriginalItem"/>
+                                    <ComboBoxItem x:Uid="QualityHighItem"/>
+                                    <ComboBoxItem x:Uid="QualityMediumItem"/>
+                                    <ComboBoxItem x:Uid="QualitySmallItem"/>
+                                </ComboBox>
+                            </StackPanel>
+                            <StackPanel Spacing="4" VerticalAlignment="Bottom">
+                                <CheckBox x:Uid="GreyscaleCheckBox" IsChecked="{Binding Greyscale, Mode=TwoWay}"/>
+                                <CheckBox
+                                    x:Uid="SearchableCheckBox"
+                                    IsChecked="{Binding Searchable, Mode=TwoWay}"/>
+                                <CheckBox
+                                    x:Uid="DeskewCheckBox"
+                                    IsChecked="{Binding Deskew, Mode=TwoWay}"/>
+                            </StackPanel>
                         </StackPanel>
-                        <StackPanel Spacing="4">
-                            <TextBlock x:Uid="MarginsLabel"/>
-                            <ComboBox x:Name="MarginsCombo" SelectedIndex="0" SelectionChanged="MarginsCombo_SelectionChanged">
-                                <ComboBoxItem x:Uid="MarginsNoneItem"/>
-                                <ComboBoxItem x:Uid="MarginsNarrowItem"/>
-                                <ComboBoxItem x:Uid="MarginsStandardItem"/>
-                            </ComboBox>
-                        </StackPanel>
-                        <StackPanel Spacing="4">
-                            <TextBlock x:Uid="OrientationLabel"/>
-                            <ComboBox x:Name="OrientationCombo" SelectedIndex="0" SelectionChanged="OrientationCombo_SelectionChanged">
-                                <ComboBoxItem x:Uid="OrientationAutoItem"/>
-                                <ComboBoxItem x:Uid="OrientationPortraitItem"/>
-                            </ComboBox>
-                        </StackPanel>
-                        <StackPanel Spacing="4">
-                            <TextBlock x:Uid="QualityLabel"/>
-                            <ComboBox x:Name="QualityCombo" SelectedIndex="0" SelectionChanged="QualityCombo_SelectionChanged">
-                                <ComboBoxItem x:Uid="QualityOriginalItem"/>
-                                <ComboBoxItem x:Uid="QualityHighItem"/>
-                                <ComboBoxItem x:Uid="QualityMediumItem"/>
-                                <ComboBoxItem x:Uid="QualitySmallItem"/>
-                            </ComboBox>
-                        </StackPanel>
-                        <StackPanel Spacing="4" VerticalAlignment="Bottom">
-                            <CheckBox x:Uid="GreyscaleCheckBox" IsChecked="{Binding Greyscale, Mode=TwoWay}"/>
-                            <CheckBox
-                                x:Uid="SearchableCheckBox"
-                                IsChecked="{Binding Searchable, Mode=TwoWay}"/>
-                            <CheckBox
-                                x:Uid="DeskewCheckBox"
-                                IsChecked="{Binding Deskew, Mode=TwoWay}"/>
-                        </StackPanel>
+                        <!-- Static, not detected: Windows.Media.Ocr doesn't fail cleanly on
+                             handwriting — it returns confidently wrong text rather than an empty
+                             result, so there's no reliable per-save signal to build a "some pages
+                             weren't recognized" warning from (confirmed by inspecting real OCR'd
+                             output against a handwritten test scan). A fixed disclaimer here is
+                             the honest option instead of detection that can't actually detect it. -->
+                        <TextBlock
+                            x:Uid="OcrHandwritingDisclaimer"
+                            FontSize="11"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                     </StackPanel>
                 </Border>
             </StackPanel>
@@ -429,16 +441,6 @@
                     </StackPanel>
                 </InfoBar.Content>
             </InfoBar>
-
-            <!-- Message text is set in code-behind (two variants — no engine at all vs. some
-                 pages recognized nothing) since InfoBar.Message can't branch on a resource lookup
-                 by itself. See SaveAsync's ReportOcrOutcome. -->
-            <InfoBar
-                x:Name="OcrLimitedInfoBar"
-                x:Uid="OcrLimitedInfoBar"
-                Severity="Warning"
-                IsOpen="False"
-                IsClosable="True"/>
         </StackPanel>
 
         <!-- Classic {Binding}, not x:Bind: x:Bind + Converter fails to compile when the

@@ -48,10 +48,11 @@
   <data name="QualityMediumItem.Content" xml:space="preserve"><value>Medium (200 DPI)</value></data>
   <data name="QualitySmallItem.Content" xml:space="preserve"><value>Small (150 DPI)</value></data>
   <data name="GreyscaleCheckBox.Content" xml:space="preserve"><value>Greyscale</value></data>
-  <data name="SearchableCheckBox.Content" xml:space="preserve"><value>Make searchable (OCR)</value></data>
+  <data name="SearchableCheckBox.Content" xml:space="preserve"><value>Make searchable (OCR)*</value></data>
   <data name="SearchableCheckBox.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>Adds an invisible, searchable text layer. Works best on clean printed text; increases save time.</value></data>
   <data name="DeskewCheckBox.Content" xml:space="preserve"><value>Auto-deskew</value></data>
   <data name="DeskewCheckBox.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>Straightens pages scanned in slightly crooked. Only helps pages with real printed text, and adds the same OCR cost as Make searchable.</value></data>
+  <data name="OcrHandwritingDisclaimer" xml:space="preserve"><value>* OCR recognizes printed text only — handwriting isn't supported and may produce garbled or no searchable text.</value></data>
 
   <!-- Save progress -->
   <data name="CancelSaveButton.Content" xml:space="preserve"><value>Cancel</value></data>
@@ -76,12 +77,6 @@
   <data name="SaveSuccessInfoBar.Title" xml:space="preserve"><value>Saved</value></data>
   <data name="OpenSavedFileButton.Content" xml:space="preserve"><value>Open</value></data>
   <data name="ShowInFolderButton.Content" xml:space="preserve"><value>Show in folder</value></data>
-  <data name="OcrLimitedInfoBar.Title" xml:space="preserve"><value>Some pages aren't searchable</value></data>
-  <data name="OcrNoEngineMessage" xml:space="preserve"><value>No OCR language pack is installed for your Windows display language, so no pages could be made searchable. Install one in Settings &#8594; Time &amp; language &#8594; Language &amp; region, then save again.</value></data>
-  <data name="OcrPartialSearchableFormat" xml:space="preserve">
-    <value>{0} of {1} page(s) didn't get a searchable text layer. OCR works best on clean printed text &#8212; handwriting, heavy skew, and low-contrast scans may not be recognized.</value>
-    <comment>{0} = pages without searchable text, {1} = total pages</comment>
-  </data>
 
   <!-- Floating add button -->
   <data name="AddMoreButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>Add more images</value></data>

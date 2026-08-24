@@ -498,11 +498,10 @@ public sealed partial class MainWindow : Window
 
         try
         {
-            PdfComposeResult result = await Task.Run(() => ViewModel.SaveAsync(file.Path, _saveCts.Token, progress));
+            await Task.Run(() => ViewModel.SaveAsync(file.Path, _saveCts.Token, progress));
             _lastSavedPath = file.Path;
             SaveSuccessInfoBar.Message = file.Name;
             SaveSuccessInfoBar.IsOpen = true;
-            ReportOcrOutcome(result);
         }
         catch (OperationCanceledException)
         {
@@ -527,33 +526,6 @@ public sealed partial class MainWindow : Window
             SaveProgressPanel.Visibility = Visibility.Collapsed;
             _saveCts.Dispose();
             _saveCts = null;
-        }
-    }
-
-    // Both fields are self-gating (PdfComposer sets OcrEngineAvailable = true and
-    // PagesWithoutSearchableText = 0 whenever Searchable wasn't on for this save), so no separate
-    // check against ViewModel.Searchable is needed here.
-    private void ReportOcrOutcome(PdfComposeResult result)
-    {
-        if (!result.OcrEngineAvailable)
-        {
-            OcrLimitedInfoBar.Message = ResourceLoader.GetString("OcrNoEngineMessage");
-            OcrLimitedInfoBar.IsOpen = true;
-        }
-        else if (result.PagesWithoutSearchableText > 0)
-        {
-            OcrLimitedInfoBar.Message = string.Format(
-                ResourceLoader.GetString("OcrPartialSearchableFormat"),
-                result.PagesWithoutSearchableText,
-                result.TotalPages);
-            OcrLimitedInfoBar.IsOpen = true;
-        }
-        else
-        {
-            // A previous save on this same window may have left this open — a subsequent clean
-            // save (Searchable off, or every page recognized something) must clear it rather than
-            // leave stale OCR-warning text sitting under a fresh success message.
-            OcrLimitedInfoBar.IsOpen = false;
         }
     }
 
