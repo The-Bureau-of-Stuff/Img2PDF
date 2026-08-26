@@ -26,3 +26,8 @@ tools/out/
 # OS
 Thumbs.db
 .DS_Store
+
+# Internal planning docs — own private repo (github.com/The-Bureau-of-Stuff/Img2PDF-docs),
+# nested here as a separate git checkout so CLAUDE.md's docs/... paths still resolve locally.
+# Not a submodule reference on purpose: this repo carries zero trace of it.
+docs/
