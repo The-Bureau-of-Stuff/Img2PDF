@@ -1,0 +1,8 @@
+{
+  "threshold": 1,
+  "minLines": 8,
+  "minTokens": 60,
+  "ignore": ["**/node_modules/**", "**/*.generated.*", "**/vendor/**", "**/.godot/**",
+    "**/bin/**", "**/obj/**", "**/*.g.cs", "**/*.g.i.cs"],
+  "absolute": true
+}
