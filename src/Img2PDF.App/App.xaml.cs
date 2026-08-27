@@ -1,15 +1,57 @@
 using System.Text;
+using Img2PDF.App.Diagnostics;
 using Microsoft.UI.Xaml;
+using Microsoft.Windows.ApplicationModel.Resources;
 
 namespace Img2PDF.App;
 
 public partial class App : Application
 {
+    private static readonly ResourceLoader ResourceLoader = new();
+
     private Window? _window;
 
     public App()
     {
         InitializeComponent();
+        AppLog.PruneOldLogs();
+        UnhandledException += OnUnhandledException;
+        AppDomain.CurrentDomain.UnhandledException += OnAppDomainUnhandledException;
+    }
+
+    // Fires on the UI thread for XAML/binding/most app-code exceptions. Handled = true keeps the
+    // process alive rather than terminating immediately — deliberate: this is a document tool
+    // mid-editing-session, and losing the whole page set (order, rotations, undo history) to a
+    // silent crash from one bad code path is worse than surfacing a message and letting the user
+    // keep going or retry Save. AppDomain's handler below covers the case where that trade-off
+    // isn't available at all.
+    private void OnUnhandledException(object sender, Microsoft.UI.Xaml.UnhandledExceptionEventArgs e)
+    {
+        AppLog.LogError("UnhandledException", e.Exception);
+        e.Handled = true;
+
+        try
+        {
+            if (_window is MainWindow mainWindow)
+            {
+                mainWindow.ViewModel.ErrorMessage = ResourceLoader.GetString("UnexpectedErrorMessage");
+            }
+        }
+        catch (Exception)
+        {
+            // Best-effort — the log write above already captured what matters.
+        }
+    }
+
+    // Background-thread exceptions land here instead — by the time this fires the process is
+    // already terminating (IsTerminating is true in practice on .NET), so this is purely
+    // "log before you die", not a place to attempt any UI recovery.
+    private void OnAppDomainUnhandledException(object sender, System.UnhandledExceptionEventArgs e)
+    {
+        if (e.ExceptionObject is Exception ex)
+        {
+            AppLog.LogError("AppDomainUnhandledException", ex);
+        }
     }
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)

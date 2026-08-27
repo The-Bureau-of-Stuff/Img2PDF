@@ -523,6 +523,16 @@
                         <Run x:Name="AppDescriptionRun"/>
                     </TextBlock>
 
+                    <!-- Local-only diagnostics — nothing here is ever sent anywhere (see privacy
+                         policy). Just gives a user hitting a bug something to hand to support
+                         instead of "it just closed". -->
+                    <TextBlock x:Uid="DiagnosticsHeading" FontWeight="SemiBold"/>
+                    <StackPanel Spacing="8">
+                        <Button x:Uid="CopyDiagnosticInfoButton" Click="CopyDiagnosticInfoButton_Click" HorizontalAlignment="Stretch"/>
+                        <Button x:Uid="OpenLogsFolderButton" Click="OpenLogsFolderButton_Click" HorizontalAlignment="Stretch"/>
+                        <Button x:Uid="ReportProblemButton" Click="ReportProblemButton_Click" HorizontalAlignment="Stretch"/>
+                    </StackPanel>
+
                     <TextBlock Text="Third-party software" FontWeight="SemiBold"/>
                     <TextBlock TextWrapping="Wrap" FontSize="12">
                         PDFsharp — Copyright (c) 2001-2026 empira Software GmbH, Troisdorf (Cologne Area), Germany

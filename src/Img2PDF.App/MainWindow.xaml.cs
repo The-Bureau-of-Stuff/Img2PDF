@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.WindowsRuntime;
+using Img2PDF.App.Diagnostics;
 using Img2PDF.App.State;
 using Img2PDF.App.ViewModels;
 using Img2PDF.Core.Imaging;
@@ -451,6 +452,57 @@ public sealed partial class MainWindow : Window
         await AboutDialog.ShowAsync();
     }
 
+    // Dedicated "Bureau of Stuff" support account, deliberately not the developer's personal
+    // address — shared across whatever future releases use the same account.
+    private const string SupportEmail = "thebureauofstuff@gmail.com";
+
+    private void CopyDiagnosticInfoButton_Click(object sender, RoutedEventArgs e)
+    {
+        var package = new DataPackage();
+        package.SetText(BuildDiagnosticInfo());
+        Clipboard.SetContent(package);
+    }
+
+    // Microsoft.UI.Xaml.dll's own assembly version does NOT track the WindowsAppSDK package
+    // version — confirmed live: this build references 2.3.1 (Img2PDF.App.csproj) but
+    // typeof(Application).Assembly.GetName().Version reports 3.0.0 regardless, a fixed number
+    // that's stayed the same across many WindowsAppSDK releases. Reporting that would actively
+    // mislead a version-specific bug report, so this is kept as a manually-updated constant
+    // instead — bump it alongside the PackageReference versions in Img2PDF.App.csproj.
+    private const string WindowsAppSdkVersion = "2.3.1";
+
+    private static string BuildDiagnosticInfo()
+    {
+        Version? appVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+
+        return string.Join(Environment.NewLine,
+            $"ClickTo: PDF {appVersion?.ToString(3) ?? "unknown"}",
+            $"Windows {Environment.OSVersion.Version}",
+            $"WindowsAppSDK {WindowsAppSdkVersion}");
+    }
+
+    private void OpenLogsFolderButton_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            Directory.CreateDirectory(AppLog.LogDirectoryPath);
+            Process.Start(new ProcessStartInfo(AppLog.LogDirectoryPath) { UseShellExecute = true });
+        }
+        catch (Exception)
+        {
+            // Best-effort — nothing useful to recover into if Explorer itself won't launch.
+        }
+    }
+
+    private async void ReportProblemButton_Click(object sender, RoutedEventArgs e)
+    {
+        Version? appVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+        string subject = Uri.EscapeDataString(
+            string.Format(ResourceLoader.GetString("ReportProblemMailSubject"), appVersion?.ToString(3) ?? "?"));
+
+        await Launcher.LaunchUriAsync(new Uri($"mailto:{SupportEmail}?subject={subject}"));
+    }
+
     private async void SaveButton_Click(object sender, RoutedEventArgs e) => await SaveAsync();
 
     private void CancelSaveButton_Click(object sender, RoutedEventArgs e) => _saveCts?.Cancel();
@@ -519,6 +571,7 @@ public sealed partial class MainWindow : Window
         }
         catch (Exception ex)
         {
+            AppLog.LogError("SaveAsync", ex);
             ViewModel.ErrorMessage = ex.Message;
         }
         finally

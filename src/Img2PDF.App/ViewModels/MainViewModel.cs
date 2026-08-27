@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.Runtime.InteropServices.WindowsRuntime;
 using CommunityToolkit.Mvvm.ComponentModel;
+using Img2PDF.App.Diagnostics;
 using Img2PDF.App.State;
 using Img2PDF.Core.Imaging;
 using Img2PDF.Core.Pdf;
@@ -122,6 +123,7 @@ public partial class MainViewModel : ObservableObject
         }
         catch (Exception ex)
         {
+            AppLog.LogError("LoadFolderAsync", ex);
             ErrorMessage = ex.Message;
             return;
         }
@@ -240,6 +242,7 @@ public partial class MainViewModel : ObservableObject
         }
         catch (Exception ex)
         {
+            AppLog.LogError("LoadPagesAsync", ex);
             ErrorMessage = ex.Message;
         }
         finally
@@ -501,7 +504,10 @@ public partial class MainViewModel : ObservableObject
         catch (Exception ex)
         {
             // Per-tile error state, not a crash (spec acceptance criteria) — corrupt/unreadable
-            // source files shouldn't take down the whole load.
+            // source files shouldn't take down the whole load. Warning, not error: an individual
+            // bad file is expected user-data noise, not an app defect worth treating the same as
+            // an unhandled exception.
+            AppLog.LogWarning("LoadPageAsync", $"{item.FileName}: {ex}");
             string detail = DescribeLoadError(ex, item.SourcePath);
             _dispatcherQueue.TryEnqueue(() =>
             {

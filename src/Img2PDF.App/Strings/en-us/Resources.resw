@@ -97,6 +97,17 @@
   <data name="AboutDialog.CloseButtonText" xml:space="preserve"><value>Close</value></data>
   <data name="AppDescriptionText" xml:space="preserve"><value>Combine images into a single PDF from File Explorer.</value></data>
 
+  <!-- About dialog — diagnostics section -->
+  <data name="DiagnosticsHeading" xml:space="preserve"><value>Diagnostics</value></data>
+  <data name="CopyDiagnosticInfoButton.Content" xml:space="preserve"><value>Copy diagnostic info</value></data>
+  <data name="OpenLogsFolderButton.Content" xml:space="preserve"><value>Open logs folder</value></data>
+  <data name="ReportProblemButton.Content" xml:space="preserve"><value>Report a problem</value></data>
+  <data name="ReportProblemMailSubject" xml:space="preserve">
+    <value>ClickTo: PDF {0} — problem report</value>
+    <comment>{0} = version number, e.g. "1.0.0". Email subject line.</comment>
+  </data>
+  <data name="UnexpectedErrorMessage" xml:space="preserve"><value>Something unexpected happened. Details were saved to a local log — see About &gt; Diagnostics.</value></data>
+
   <!-- Window title / version (code-behind) -->
   <data name="WindowTitle" xml:space="preserve"><value>ClickTo: PDF</value></data>
   <data name="AppVersionFormat" xml:space="preserve">
