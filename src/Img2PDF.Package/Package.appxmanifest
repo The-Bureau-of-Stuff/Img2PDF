@@ -15,7 +15,7 @@
   <Identity
     Name="TheBureauofStuff.ClickToPDF"
     Publisher="CN=6ACAA7C7-CCDB-4E63-ABCE-1383DE9B3AE4"
-    Version="0.5.20.0" />
+    Version="0.5.21.0" />
 
   <Properties>
     <!-- Must match a name reserved in Partner Center character-for-character, or
