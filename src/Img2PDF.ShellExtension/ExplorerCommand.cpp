@@ -157,32 +157,21 @@ namespace
         return contents;
     }
 
-    // A directory only counts as "usable" if it directly contains at least one supported file —
-    // an empty folder, or one full of unrelated files, is still skipped like any other unusable
-    // item (spec §10: no unprompted recursive scanning either, so this stays one level deep).
-    bool IsSupportedFolder(const std::filesystem::path& path)
-    {
-        std::error_code ec;
-        if (!std::filesystem::is_directory(path, ec))
-        {
-            return false;
-        }
-
-        for (const std::filesystem::directory_entry& entry : std::filesystem::directory_iterator(path, ec))
-        {
-            if (IsSupportedFile(entry.path()))
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
+    // Used by GetState only, which spec §10 requires to return quickly regardless of selection
+    // size — a folder counts as usable without scanning its contents (a single is_directory stat).
+    // Invoke does the real, possibly-empty check via ExpandFolder and no-ops safely if nothing
+    // supported turns up inside, so a folder with no images just shows the menu item and does
+    // nothing on click rather than stalling Explorer to rule that out up front.
     bool IsUsableSelection(const std::wstring& path)
     {
         std::filesystem::path p(path);
-        return IsSupportedFile(p) || IsSupportedFolder(p);
+        if (IsSupportedFile(p))
+        {
+            return true;
+        }
+
+        std::error_code ec;
+        return std::filesystem::is_directory(p, ec);
     }
 
     std::filesystem::path GetTempDir()
@@ -329,15 +318,23 @@ IFACEMETHODIMP ExplorerCommandHandler::Invoke(IShellItemArray* items, IBindCtx* 
         for (const std::wstring& pathText : paths)
         {
             std::filesystem::path path(pathText);
+            std::error_code ec;
             if (IsSupportedFile(path))
             {
                 supported.push_back(pathText);
             }
-            else if (IsSupportedFolder(path))
+            else if (std::filesystem::is_directory(path, ec))
             {
                 FolderContents contents = ExpandFolder(path);
-                supported.insert(supported.end(), contents.supportedFiles.begin(), contents.supportedFiles.end());
-                skippedNames.insert(skippedNames.end(), contents.skippedFileNames.begin(), contents.skippedFileNames.end());
+                if (!contents.supportedFiles.empty())
+                {
+                    supported.insert(supported.end(), contents.supportedFiles.begin(), contents.supportedFiles.end());
+                    skippedNames.insert(skippedNames.end(), contents.skippedFileNames.begin(), contents.skippedFileNames.end());
+                }
+                else
+                {
+                    skippedNames.push_back(path.filename().wstring());
+                }
             }
             else
             {
