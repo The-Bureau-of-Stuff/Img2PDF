@@ -322,11 +322,18 @@ public sealed partial class MainWindow : Window
     // guard against a null ViewModel rather than relying on ordering. (A NullReferenceException
     // thrown from inside that synchronous callback doesn't surface as a normal managed exception;
     // it escapes through the WinRT/XAML boundary as an unhandled native crash, 0xc000027b.)
+    //
+    // Read via each ComboBoxItem's Tag rather than SelectedIndex — the Tag names the enum member
+    // directly, so reordering or inserting a ComboBoxItem in XAML can't silently desync from the
+    // enum the way a positional index cast could.
+    private static T SelectedOption<T>(ComboBox combo) where T : struct, Enum =>
+        Enum.Parse<T>((string)((ComboBoxItem)combo.SelectedItem).Tag);
+
     private void PageSizeCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (ViewModel is not null)
         {
-            ViewModel.PageSize = (PageSizeOption)PageSizeCombo.SelectedIndex;
+            ViewModel.PageSize = SelectedOption<PageSizeOption>(PageSizeCombo);
         }
     }
 
@@ -334,7 +341,7 @@ public sealed partial class MainWindow : Window
     {
         if (ViewModel is not null)
         {
-            ViewModel.Margins = (MarginsOption)MarginsCombo.SelectedIndex;
+            ViewModel.Margins = SelectedOption<MarginsOption>(MarginsCombo);
         }
     }
 
@@ -342,7 +349,7 @@ public sealed partial class MainWindow : Window
     {
         if (ViewModel is not null)
         {
-            ViewModel.Orientation = (OrientationOption)OrientationCombo.SelectedIndex;
+            ViewModel.Orientation = SelectedOption<OrientationOption>(OrientationCombo);
         }
     }
 
@@ -350,7 +357,7 @@ public sealed partial class MainWindow : Window
     {
         if (ViewModel is not null)
         {
-            ViewModel.Quality = (QualityOption)QualityCombo.SelectedIndex;
+            ViewModel.Quality = SelectedOption<QualityOption>(QualityCombo);
         }
     }
 

@@ -135,33 +135,33 @@
                             <StackPanel Spacing="4">
                                 <TextBlock x:Uid="PageSizeLabel"/>
                                 <ComboBox x:Name="PageSizeCombo" SelectedIndex="0" SelectionChanged="PageSizeCombo_SelectionChanged">
-                                    <ComboBoxItem x:Uid="PageSizeA4Item"/>
-                                    <ComboBoxItem x:Uid="PageSizeLetterItem"/>
-                                    <ComboBoxItem x:Uid="PageSizeMatchImageItem"/>
+                                    <ComboBoxItem x:Uid="PageSizeA4Item" Tag="A4"/>
+                                    <ComboBoxItem x:Uid="PageSizeLetterItem" Tag="Letter"/>
+                                    <ComboBoxItem x:Uid="PageSizeMatchImageItem" Tag="MatchImage"/>
                                 </ComboBox>
                             </StackPanel>
                             <StackPanel Spacing="4">
                                 <TextBlock x:Uid="MarginsLabel"/>
                                 <ComboBox x:Name="MarginsCombo" SelectedIndex="0" SelectionChanged="MarginsCombo_SelectionChanged">
-                                    <ComboBoxItem x:Uid="MarginsNoneItem"/>
-                                    <ComboBoxItem x:Uid="MarginsNarrowItem"/>
-                                    <ComboBoxItem x:Uid="MarginsStandardItem"/>
+                                    <ComboBoxItem x:Uid="MarginsNoneItem" Tag="None"/>
+                                    <ComboBoxItem x:Uid="MarginsNarrowItem" Tag="Narrow"/>
+                                    <ComboBoxItem x:Uid="MarginsStandardItem" Tag="Standard"/>
                                 </ComboBox>
                             </StackPanel>
                             <StackPanel Spacing="4">
                                 <TextBlock x:Uid="OrientationLabel"/>
                                 <ComboBox x:Name="OrientationCombo" SelectedIndex="0" SelectionChanged="OrientationCombo_SelectionChanged">
-                                    <ComboBoxItem x:Uid="OrientationAutoItem"/>
-                                    <ComboBoxItem x:Uid="OrientationPortraitItem"/>
+                                    <ComboBoxItem x:Uid="OrientationAutoItem" Tag="Auto"/>
+                                    <ComboBoxItem x:Uid="OrientationPortraitItem" Tag="ForcePortrait"/>
                                 </ComboBox>
                             </StackPanel>
                             <StackPanel Spacing="4">
                                 <TextBlock x:Uid="QualityLabel"/>
                                 <ComboBox x:Name="QualityCombo" SelectedIndex="0" SelectionChanged="QualityCombo_SelectionChanged">
-                                    <ComboBoxItem x:Uid="QualityOriginalItem"/>
-                                    <ComboBoxItem x:Uid="QualityHighItem"/>
-                                    <ComboBoxItem x:Uid="QualityMediumItem"/>
-                                    <ComboBoxItem x:Uid="QualitySmallItem"/>
+                                    <ComboBoxItem x:Uid="QualityOriginalItem" Tag="Original"/>
+                                    <ComboBoxItem x:Uid="QualityHighItem" Tag="High"/>
+                                    <ComboBoxItem x:Uid="QualityMediumItem" Tag="Medium"/>
+                                    <ComboBoxItem x:Uid="QualitySmallItem" Tag="Small"/>
                                 </ComboBox>
                             </StackPanel>
                             <StackPanel Spacing="4" VerticalAlignment="Bottom">
