@@ -528,9 +528,9 @@
                          instead of "it just closed". -->
                     <TextBlock x:Uid="DiagnosticsHeading" FontWeight="SemiBold"/>
                     <StackPanel Spacing="8">
-                        <Button x:Uid="CopyDiagnosticInfoButton" Click="CopyDiagnosticInfoButton_Click" HorizontalAlignment="Stretch"/>
-                        <Button x:Uid="OpenLogsFolderButton" Click="OpenLogsFolderButton_Click" HorizontalAlignment="Stretch"/>
-                        <Button x:Uid="ReportProblemButton" Click="ReportProblemButton_Click" HorizontalAlignment="Stretch"/>
+                        <Button x:Uid="CopyDiagnosticInfoButton" Style="{StaticResource AccentButtonStyle}" Click="CopyDiagnosticInfoButton_Click" HorizontalAlignment="Stretch"/>
+                        <Button x:Uid="OpenLogsFolderButton" Style="{StaticResource AccentButtonStyle}" Click="OpenLogsFolderButton_Click" HorizontalAlignment="Stretch"/>
+                        <Button x:Uid="ReportProblemButton" Style="{StaticResource AccentButtonStyle}" Click="ReportProblemButton_Click" HorizontalAlignment="Stretch"/>
                     </StackPanel>
 
                     <TextBlock Text="Third-party software" FontWeight="SemiBold"/>
