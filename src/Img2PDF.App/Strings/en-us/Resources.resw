@@ -127,5 +127,7 @@
     <value>{0} item(s) skipped: {1}</value>
     <comment>{0} = count, {1} = comma-separated file names</comment>
   </data>
-  <data name="HeicCodecMissingMessage" xml:space="preserve"><value>This HEIC photo needs the free "HEIF Image Extensions" app from the Microsoft Store to open. Search for it by name in the Store, install it, then reload this file.</value></data>
+  <data name="HeicCodecMissingMessage" xml:space="preserve"><value>This HEIC photo needs two components from the Microsoft Store to open: "HEIF Image Extensions" and a separate HEVC decoder ("HEVC Video Extensions", or the free "HEVC Video Extensions from Device Manufacturer" if your PC's maker preinstalled it). Install both, then reload this file.</value></data>
+  <data name="WebpCodecMissingMessage" xml:space="preserve"><value>This WEBP photo needs the "Webp Image Extensions" app from the Microsoft Store to open. Install it, then reload this file.</value></data>
+  <data name="CodecMissingLinkButton.Content" xml:space="preserve"><value>Open Microsoft Store</value></data>
 </root>

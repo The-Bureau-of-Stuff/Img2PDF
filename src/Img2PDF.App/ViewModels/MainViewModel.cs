@@ -18,15 +18,17 @@ public partial class MainViewModel : ObservableObject
     // Matches the shell extension's registered file types (spec §4.1) — broader than M1's
     // JPEG-only scope, since thumbnail decode via WIC works uniformly across all of these.
     private static readonly string[] SupportedExtensions =
-        { ".jpg", ".jpeg", ".png", ".heic", ".tif", ".tiff", ".bmp", ".webp", ".gif" };
+        { ".jpg", ".jpeg", ".png", ".heic", ".heif", ".tif", ".tiff", ".bmp", ".webp", ".gif" };
 
     private const int MaxConcurrentThumbnailLoads = 4;
 
     // WIC's "no codec registered for this container" HRESULT. On a clean Windows install this is
-    // what HEIC/HEIF decode fails with until the user installs the free Microsoft Store "HEIF
-    // Image Extensions" — worth a specific message rather than a bare "Can't load" (spec §8 item 7).
+    // what optional formats fail with until the matching codec pack is installed from the
+    // Microsoft Store — HEIC/HEIF needs both "HEIF Image Extensions" and a separate HEVC decoder
+    // (HEIC's pixel data is HEVC-coded; HEIF Image Extensions alone can't decode it), while WEBP
+    // needs only its own codec pack. Worth an actionable message rather than a bare "Can't load"
+    // (spec §8 item 7) — see CodecFixLinks for the extension→fix-link mapping.
     private const int WinCodecErrComponentNotFound = unchecked((int)0x88982F50);
-    private static readonly string[] HeifExtensions = { ".heic", ".heif" };
 
     private static readonly ResourceLoader ResourceLoader = new();
 
@@ -508,11 +510,12 @@ public partial class MainViewModel : ObservableObject
             // bad file is expected user-data noise, not an app defect worth treating the same as
             // an unhandled exception.
             AppLog.LogWarning("LoadPageAsync", $"{item.FileName}: {ex}");
-            string detail = DescribeLoadError(ex, item.SourcePath);
+            (string detail, Uri? storeLinkUri) = DescribeLoadError(ex, item.SourcePath);
             _dispatcherQueue.TryEnqueue(() =>
             {
                 item.HasError = true;
                 item.ErrorDetail = detail;
+                item.ErrorStoreLinkUri = storeLinkUri;
                 item.IsLoading = false;
             });
         }
@@ -522,14 +525,14 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
-    private static string DescribeLoadError(Exception ex, string sourcePath)
+    private static (string Message, Uri? StoreLinkUri) DescribeLoadError(Exception ex, string sourcePath)
     {
-        bool isHeif = HeifExtensions.Contains(Path.GetExtension(sourcePath), StringComparer.OrdinalIgnoreCase);
-        if (isHeif && ex.HResult == WinCodecErrComponentNotFound)
+        if (ex.HResult == WinCodecErrComponentNotFound &&
+            CodecFixLinks.GetFixLink(Path.GetExtension(sourcePath)) is (string messageKey, Uri storeLinkUri))
         {
-            return ResourceLoader.GetString("HeicCodecMissingMessage");
+            return (ResourceLoader.GetString(messageKey), storeLinkUri);
         }
 
-        return ex.Message;
+        return (ex.Message, null);
     }
 }

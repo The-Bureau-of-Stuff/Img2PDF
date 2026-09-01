@@ -321,14 +321,31 @@
                                             Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibility}}"
                                             HorizontalAlignment="Center" VerticalAlignment="Center"/>
 
-                                        <StackPanel
+                                        <Button
+                                            Style="{StaticResource IconButtonStyle}"
                                             Visibility="{Binding HasError, Converter={StaticResource BoolToVisibility}}"
                                             ToolTipService.ToolTip="{Binding ErrorDetail}"
-                                            HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="4">
-                                            <FontIcon Glyph="&#xE783;" FontSize="24"
-                                                      Foreground="{ThemeResource SystemFillColorCriticalBrush}"/>
-                                            <TextBlock x:Uid="CantLoadText" FontSize="11" HorizontalAlignment="Center"/>
-                                        </StackPanel>
+                                            HorizontalAlignment="Center" VerticalAlignment="Center">
+                                            <StackPanel Spacing="4">
+                                                <FontIcon Glyph="&#xE783;" FontSize="24"
+                                                          Foreground="{ThemeResource SystemFillColorCriticalBrush}"/>
+                                                <TextBlock x:Uid="CantLoadText" FontSize="11" HorizontalAlignment="Center"/>
+                                            </StackPanel>
+                                            <!-- Click-to-open rather than relying on the hover ToolTip above, since a
+                                                 codec-missing error needs a HyperlinkButton the user can actually
+                                                 activate — ToolTip content isn't reliably interactive. -->
+                                            <Button.Flyout>
+                                                <Flyout>
+                                                    <StackPanel Spacing="8" MaxWidth="260">
+                                                        <TextBlock Text="{Binding ErrorDetail}" TextWrapping="Wrap"/>
+                                                        <HyperlinkButton
+                                                            x:Uid="CodecMissingLinkButton"
+                                                            NavigateUri="{Binding ErrorStoreLinkUri}"
+                                                            Visibility="{Binding ErrorStoreLinkUri, Converter={StaticResource BoolToVisibility}}"/>
+                                                    </StackPanel>
+                                                </Flyout>
+                                            </Button.Flyout>
+                                        </Button>
                                     </Grid>
 
                                     <!-- Filename + chrome share the bottom row so the buttons no

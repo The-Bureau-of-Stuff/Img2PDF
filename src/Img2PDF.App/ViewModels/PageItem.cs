@@ -56,6 +56,12 @@ public partial class PageItem : ObservableObject
     [ObservableProperty]
     private string? _errorDetail;
 
+    // Non-null only when ErrorDetail names a Store-installable codec fix for this file's own
+    // extension — the tile's error flyout uses this to show a direct link instead of asking the
+    // user to search the Store by name.
+    [ObservableProperty]
+    private Uri? _errorStoreLinkUri;
+
     // Kept in sync by MainViewModel after every reorder/remove — not authoritative on its own,
     // just a bindable mirror of the item's current position in the page collection.
     [ObservableProperty]

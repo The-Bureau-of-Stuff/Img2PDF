@@ -10,9 +10,9 @@ namespace Img2PDF::ShellExtension
     // Must be kept in lockstep with MainViewModel.SupportedExtensions (Img2PDF.App) — this is
     // the visibility gate for the context menu entry, the app's loader assumes anything it's
     // handed already passed this filter.
-    inline constexpr std::array<std::wstring_view, 9> SupportedExtensions =
+    inline constexpr std::array<std::wstring_view, 10> SupportedExtensions =
     {
-        L".jpg", L".jpeg", L".png", L".heic", L".tif", L".tiff", L".bmp", L".webp", L".gif"
+        L".jpg", L".jpeg", L".png", L".heic", L".heif", L".tif", L".tiff", L".bmp", L".webp", L".gif"
     };
 
     inline bool EqualsCaseInsensitive(std::wstring_view a, std::wstring_view b)
